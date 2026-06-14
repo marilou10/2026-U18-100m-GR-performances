@@ -1,0 +1,1 @@
+print("Roster Athletics scraper is ready!")
