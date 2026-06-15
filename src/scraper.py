@@ -10,17 +10,20 @@ import time
 
 
 # =========================
-# LINKS (meets)
+# MEETS (heats / finals)
 # =========================
 URLS = [
-    "https://meets.rosterathletics.com/public/competitions/details/results?id=29233&meId=432494",
-    "https://meets.rosterathletics.com/public/competitions/details/results?id=29233&meId=432495",
+    {
+        "url": "https://meets.rosterathletics.com/public/competitions/details/results?id=29233&meId=432494",
+        "heat": "Final A"
+    },
+    {
+        "url": "https://meets.rosterathletics.com/public/competitions/details/results?id=29233&meId=432495",
+        "heat": "Final B"
+    },
 ]
 
 
-# =========================
-# START DRIVER
-# =========================
 driver = webdriver.Chrome(
     service=Service(ChromeDriverManager().install())
 )
@@ -29,10 +32,14 @@ all_results = []
 
 
 # =========================
-# SCRAPING LOOP
+# SCRAPE LOOP
 # =========================
-for url in URLS:
+for item in URLS:
+    url = item["url"]
+    heat_name = item["heat"]
+
     print("\nΕπεξεργασία:", url)
+    print("Heat:", heat_name)
 
     driver.get(url)
     time.sleep(5)
@@ -68,6 +75,8 @@ for url in URLS:
         if len(cells) < 6:
             continue
 
+        lane = cells[1].text.strip()   # ⭐ FIX: lane
+
         athlete_info = cells[2].text.split("\n")
 
         name = athlete_info[0].strip()
@@ -79,8 +88,12 @@ for url in URLS:
 
         club = cells[4].text.strip()
 
-        performance = cells[5].text.split("\n")[0]
-        performance = performance.replace("SB", "").strip()
+        performance_text = cells[5].text.split("\n")[0].strip()
+
+        if performance_text == "" or "DNS" in performance_text or "DNF" in performance_text:
+            continue
+
+        performance = performance_text.replace("SB", "").strip()
 
         if 2009 <= birth_year <= 2012:
             all_results.append({
@@ -92,6 +105,8 @@ for url in URLS:
                 "competition": competition,
                 "date": date,
                 "location": location,
+                "heat": heat_name,
+                "lane": lane   # ⭐ NEW
             })
 
 
@@ -99,7 +114,7 @@ driver.quit()
 
 
 # =========================
-# SEASON BEST RANKING
+# SEASON BEST
 # =========================
 season_best = {}
 
@@ -121,7 +136,7 @@ ranking = sorted(season_best.values(), key=lambda x: float(x["performance"]))
 
 
 # =========================
-# OUTPUT PATH (FIXED)
+# OUTPUT FILE
 # =========================
 base_dir = os.path.dirname(os.path.abspath(__file__))
 output_dir = os.path.join(base_dir, "output")
@@ -136,7 +151,7 @@ filename = os.path.join(
 
 
 # =========================
-# EXCEL EXPORT
+# EXCEL
 # =========================
 wb = Workbook()
 
@@ -145,7 +160,8 @@ ws1.title = "All_Performances"
 
 ws1.append([
     "Name", "Birth Year", "Club", "Performance",
-    "Wind", "Competition", "Date", "Location"
+    "Wind", "Competition", "Date", "Location",
+    "Heat", "Lane"
 ])
 
 for r in all_results:
@@ -158,13 +174,15 @@ for r in all_results:
         r["competition"],
         r["date"],
         r["location"],
+        r["heat"],
+        r["lane"]
     ])
 
 ws2 = wb.create_sheet("Season_Best")
 
 ws2.append([
     "Rank", "Name", "Birth Year", "Club",
-    "Best Performance", "Competition", "Date", "Location"
+    "Best Performance", "Heat", "Lane"
 ])
 
 for i, r in enumerate(ranking, 1):
@@ -174,25 +192,16 @@ for i, r in enumerate(ranking, 1):
         r["birth_year"],
         r["club"],
         r["performance"],
-        r["competition"],
-        r["date"],
-        r["location"],
+        r["heat"],
+        r["lane"]
     ])
 
 
 wb.save(filename)
 
-
-# =========================
-# FINAL OUTPUT
-# =========================
 print("\nDONE")
 print("Excel file:", filename)
-print("All performances:", len(all_results))
+print("Total performances:", len(all_results))
 print("Season best athletes:", len(ranking))
 
-
-# =========================
-# AUTO OPEN EXCEL (FIXED)
-# =========================
 os.startfile(filename)
