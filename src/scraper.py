@@ -83,7 +83,7 @@ for url in URLS:
 
         performance = cells[5].text.split("\n")[0].strip()
 
-        # Κ18 (2009–2010) + Κ16 με δικαίωμα συμμετοχής (2011–2012)
+        # Κ18 (2009–2012)
         if 2009 <= birth_year <= 2012:
             results.append({
                 "name": name,
@@ -99,14 +99,41 @@ for url in URLS:
 driver.quit()
 
 # ========================
-# Συνολικά αποτελέσματα
+# Καλύτερη επίδοση ανά αθλήτρια
 # ========================
 
-print("\n" + "=" * 60)
-print("ΣΥΝΟΛΙΚΑ Κ18 ΑΠΟΤΕΛΕΣΜΑΤΑ")
-print("=" * 60)
+best_results = {}
 
 for athlete in results:
-    print(athlete)
+    name = athlete["name"]
+    performance = float(athlete["performance"])
 
-print("\nΣυνολικές Κ18 εγγραφές:", len(results))
+    if (
+        name not in best_results
+        or performance < float(best_results[name]["performance"])
+    ):
+        best_results[name] = athlete
+
+# ========================
+# Ranking
+# ========================
+
+ranking = sorted(
+    best_results.values(),
+    key=lambda x: float(x["performance"])
+)
+
+print("\n" + "=" * 60)
+print("ΠΑΝΕΛΛΗΝΙΟ RANKING Κ18 100μ")
+print("=" * 60)
+
+for position, athlete in enumerate(ranking, start=1):
+    print(
+        f"{position}. "
+        f"{athlete['name']} | "
+        f"{athlete['birth_year']} | "
+        f"{athlete['performance']} | "
+        f"{athlete['club']}"
+    )
+
+print("\nΣυνολικές αθλήτριες:", len(ranking))
