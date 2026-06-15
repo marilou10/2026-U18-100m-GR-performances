@@ -18,21 +18,57 @@ driver.get(URL)
 # Περιμένουμε να φορτώσει η σελίδα
 time.sleep(5)
 
-# Παίρνουμε όλες τις γραμμές του πίνακα αποτελεσμάτων
+# ========================
+# Στοιχεία αγώνα
+# ========================
+
+competition = driver.title.replace("Roster Athletics · ", "").strip()
+
+page_text = driver.find_element(By.TAG_NAME, "body").text
+
+date = ""
+location = ""
+wind = ""
+
+lines = page_text.split("\n")
+
+for i, line in enumerate(lines):
+    line = line.strip()
+
+    if line == "ΗΜΕΡΟΜΗΝΙΑ & ΩΡΑ" and i + 1 < len(lines):
+        date = lines[i + 1].strip()
+
+    elif line == "ΠΟΛΗ & ΧΩΡΑ" and i + 1 < len(lines):
+        location = lines[i + 1].strip()
+
+    elif line.startswith("Άνεμος:"):
+        wind = line.replace("Άνεμος:", "").strip()
+
+print("\n" + "=" * 60)
+print("ΣΤΟΙΧΕΙΑ ΑΓΩΝΑ")
+print("=" * 60)
+print("Αγώνας:", competition)
+print("Ημερομηνία:", date)
+print("Τοποθεσία:", location)
+print("Άνεμος:", wind)
+
+# ========================
+# Αποτελέσματα Κ18
+# ========================
+
 rows = driver.find_elements(By.CSS_SELECTOR, "tbody tr")
 
-print(f"Βρέθηκαν {len(rows)} γραμμές")
+print(f"\nΒρέθηκαν {len(rows)} γραμμές")
 
 results = []
 
 for row in rows:
     cells = row.find_elements(By.TAG_NAME, "td")
 
-    # Προστασία σε περίπτωση που κάποια γραμμή δεν είναι κανονικό αποτέλεσμα
+    # Παραλείπουμε γραμμές που δεν έχουν τα αναμενόμενα δεδομένα
     if len(cells) < 6:
         continue
 
-    # Στήλη 3: Όνομα + έτος γέννησης + χώρα
     athlete_info = cells[2].text.split("\n")
 
     name = athlete_info[0].strip()
@@ -42,24 +78,28 @@ for row in rows:
     except (IndexError, ValueError):
         continue
 
-    # Στήλη 5: Σύλλογος
     club = cells[4].text.strip()
 
-    # Στήλη 6: Επίδοση
     performance = cells[5].text.split("\n")[0].strip()
 
-    # Φιλτράρουμε μόνο Κ18 (2009–2012)
+    # Κ18 (2009–2010) + Κ16 με δικαίωμα συμμετοχής (2011–2012)
     if 2009 <= birth_year <= 2012:
         results.append({
             "name": name,
             "birth_year": birth_year,
             "club": club,
             "performance": performance,
+            "wind": wind,
+            "competition": competition,
+            "date": date,
+            "location": location,
         })
 
 driver.quit()
 
-print("\nΚ18 αποτελέσματα:\n")
+print("\n" + "=" * 60)
+print("Κ18 ΑΠΟΤΕΛΕΣΜΑΤΑ")
+print("=" * 60)
 
 for athlete in results:
     print(athlete)
