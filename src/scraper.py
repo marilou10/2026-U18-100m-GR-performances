@@ -15,23 +15,51 @@ driver = webdriver.Chrome(
 
 driver.get(URL)
 
+# Περιμένουμε να φορτώσει η σελίδα
 time.sleep(5)
 
-rows = driver.find_elements(
-    By.CSS_SELECTOR,
-    "tbody tr"
-)
+# Παίρνουμε όλες τις γραμμές του πίνακα αποτελεσμάτων
+rows = driver.find_elements(By.CSS_SELECTOR, "tbody tr")
 
-print(f"Βρέθηκαν {len(rows)} γραμμές\n")
+print(f"Βρέθηκαν {len(rows)} γραμμές")
 
-for i, row in enumerate(rows, start=1):
-    print("=" * 60)
-    print(f"ΓΡΑΜΜΗ {i}")
+results = []
 
+for row in rows:
     cells = row.find_elements(By.TAG_NAME, "td")
 
-    for j, cell in enumerate(cells, start=1):
-        print(f"Στήλη {j}: '{cell.text}'")
+    # Προστασία σε περίπτωση που κάποια γραμμή δεν είναι κανονικό αποτέλεσμα
+    if len(cells) < 6:
+        continue
 
-input("\nPress Enter to close...")
+    # Στήλη 3: Όνομα + έτος γέννησης + χώρα
+    athlete_info = cells[2].text.split("\n")
+
+    name = athlete_info[0].strip()
+
+    try:
+        birth_year = int(athlete_info[1].strip())
+    except (IndexError, ValueError):
+        continue
+
+    # Στήλη 5: Σύλλογος
+    club = cells[4].text.strip()
+
+    # Στήλη 6: Επίδοση
+    performance = cells[5].text.split("\n")[0].strip()
+
+    # Φιλτράρουμε μόνο Κ18 (2009–2012)
+    if 2009 <= birth_year <= 2012:
+        results.append({
+            "name": name,
+            "birth_year": birth_year,
+            "club": club,
+            "performance": performance,
+        })
+
 driver.quit()
+
+print("\nΚ18 αποτελέσματα:\n")
+
+for athlete in results:
+    print(athlete)
