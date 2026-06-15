@@ -1,4 +1,3 @@
-
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
@@ -16,16 +15,23 @@ driver = webdriver.Chrome(
 
 driver.get(URL)
 
-# Περιμένουμε λίγα δευτερόλεπτα να φορτώσει η σελίδα
 time.sleep(5)
 
-athletes = driver.find_elements(By.CSS_SELECTOR, "a.athlete-name")
+rows = driver.find_elements(
+    By.CSS_SELECTOR,
+    "tbody tr"
+)
 
-print(f"Βρέθηκαν {len(athletes)} αθλήτριες:\n")
+print(f"Βρέθηκαν {len(rows)} γραμμές\n")
 
-for i, athlete in enumerate(athletes, start=1):
-    print(f"{i}. {athlete.text}")
+for i, row in enumerate(rows, start=1):
+    print("=" * 60)
+    print(f"ΓΡΑΜΜΗ {i}")
+
+    cells = row.find_elements(By.TAG_NAME, "td")
+
+    for j, cell in enumerate(cells, start=1):
+        print(f"Στήλη {j}: '{cell.text}'")
 
 input("\nPress Enter to close...")
-
 driver.quit()
