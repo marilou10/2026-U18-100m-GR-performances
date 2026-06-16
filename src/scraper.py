@@ -12,16 +12,14 @@ import time
 # =========================
 # MEETS (heats / finals)
 # =========================
-URLS = [
-    {
-        "url": "https://meets.rosterathletics.com/public/competitions/details/results?id=29233&meId=432494",
-        "heat": "Final A"
-    },
-    {
-        "url": "https://meets.rosterathletics.com/public/competitions/details/results?id=29233&meId=432495",
-        "heat": "Final B"
-    },
-]
+
+LINKS_FILE = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+    "meet_links.txt"
+)
+
+with open(LINKS_FILE, encoding="utf-8") as f:
+    URLS = [line.strip() for line in f if line.strip()]
 
 
 driver = webdriver.Chrome(
@@ -34,20 +32,22 @@ all_results = []
 # =========================
 # SCRAPE LOOP
 # =========================
-for item in URLS:
-    url = item["url"]
-    heat_name = item["heat"]
-
+for url in URLS:
     print("\nΕπεξεργασία:", url)
-    print("Heat:", heat_name)
-
+    
     driver.get(url)
     time.sleep(5)
     
-    competition = driver.title.replace("Roster Athletics · ", "").strip()
-
+    heat_name = ""
     body_text = driver.find_element(By.TAG_NAME, "body").text
     lines = body_text.split("\n")
+
+    for i, line in enumerate(lines):
+        line = line.strip()
+
+        if "100μ" in line and "Τελικός" in line:
+            heat_name = line
+            break
 
     date = ""
     location = ""
@@ -75,7 +75,7 @@ for item in URLS:
         if len(cells) < 6:
             continue
 
-        lane = cells[1].text.strip()   # ⭐ FIX: lane
+        lane = cells[1].text.strip()
 
         athlete_info = cells[2].text.split("\n")
 
@@ -102,13 +102,25 @@ for item in URLS:
                 "club": club,
                 "performance": performance,
                 "wind": wind,
-                "competition": competition,
+                "competition": url,
                 "date": date,
                 "location": location,
                 "heat": heat_name,
-                "lane": lane   # ⭐ NEW
+                "lane": lane
             })
 
+unique = {}
+for r in all_results:
+    key = (
+        r["name"],
+        r["birth_year"],
+        r["competition"],
+        r["performance"]
+    )
+
+    unique[key] = r
+
+all_results = list(unique.values())
 
 driver.quit()
 
@@ -124,16 +136,18 @@ for r in all_results:
     except:
         continue
 
-    name = r["name"]
+    key = (r["name"], r["birth_year"])
 
-    if name not in season_best:
-        season_best[name] = r
+    if key not in season_best:
+        season_best[key] = r
     else:
-        if perf < float(season_best[name]["performance"]):
-            season_best[name] = r
+        if perf < float(season_best[key]["performance"]):
+            season_best[key] = r  
 
-ranking = sorted(season_best.values(), key=lambda x: float(x["performance"]))
-
+ranking = sorted(
+    season_best.values(),
+    key=lambda x: float(x["performance"])
+)
 
 # =========================
 # OUTPUT FILE
@@ -204,4 +218,4 @@ print("Excel file:", filename)
 print("Total performances:", len(all_results))
 print("Season best athletes:", len(ranking))
 
-os.startfile(filename)
+os.startfile(filename) 
