@@ -4,6 +4,7 @@ from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from selenium.common.exceptions import TimeoutException
 from webdriver_manager.chrome import ChromeDriverManager
 
 from openpyxl import Workbook
@@ -11,6 +12,8 @@ from datetime import datetime
 import os
 import json
 import time
+import sys
+import subprocess
 
 
 # =========================
@@ -43,9 +46,14 @@ if os.path.exists(CACHE_FILE):
 
 if USE_CACHE:
     print("Loading from cache...")
-    with open(CACHE_FILE, 'r', encoding='utf-8') as f:
-        all_results = json.load(f)
-    print(f"Loaded {len(all_results)} performances from cache\n")
+    try:
+        with open(CACHE_FILE, 'r', encoding='utf-8') as f:
+            all_results = json.load(f)
+        print(f"Loaded {len(all_results)} performances from cache\n")
+    except json.JSONDecodeError:
+        print("⚠️ Cache file is corrupted. Starting fresh...")
+        all_results = []
+        USE_CACHE = False
 else:
     # =========================
     # CHROME OPTIONS
@@ -77,7 +85,7 @@ else:
                 WebDriverWait(driver, 15).until(
                     EC.presence_of_all_elements_located((By.CSS_SELECTOR, "tbody tr"))
                 )
-            except:
+            except TimeoutException:
                 print(f"⚠️ Timeout: Could not load table data from {url}")
                 driver.quit()
                 continue
@@ -131,7 +139,7 @@ else:
 
                     try:
                         birth_year = int(athlete_info[1].strip())
-                    except:
+                    except ValueError:
                         continue
 
                     club = cells[4].text.strip()
@@ -168,7 +176,7 @@ else:
             if driver:
                 try:
                     driver.quit()
-                except:
+                except Exception:
                     pass
 
     # Remove duplicates
@@ -199,7 +207,7 @@ season_best = {}
 for r in all_results:
     try:
         perf = float(r["performance"])
-    except:
+    except ValueError:
         continue
 
     key = (r["name"], r["birth_year"])
@@ -286,4 +294,10 @@ print(f"Excel file: {filename}")
 print(f"Total performances: {len(all_results)}")
 print(f"Season best athletes: {len(ranking)}")
 
-os.startfile(filename)
+# Open file with cross-platform support
+if sys.platform == "win32":
+    os.startfile(filename)
+elif sys.platform == "darwin":
+    subprocess.run(["open", filename])
+else:  # Linux
+    subprocess.run(["xdg-open", filename])
