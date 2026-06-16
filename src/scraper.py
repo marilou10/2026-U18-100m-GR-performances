@@ -43,7 +43,7 @@ for item in URLS:
 
     driver.get(url)
     time.sleep(5)
-
+    
     competition = driver.title.replace("Roster Athletics · ", "").strip()
 
     body_text = driver.find_element(By.TAG_NAME, "body").text
