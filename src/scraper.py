@@ -32,26 +32,34 @@ with open(LINKS_FILE, encoding="utf-8") as f:
     URLS = [line.strip() for line in f if line.strip()]
 
 all_results = []
+scraped_urls = set()
 
 # =========================
-# CHECK FOR CACHE
+# LOAD EXISTING CACHE
 # =========================
-USE_CACHE = False
 if os.path.exists(CACHE_FILE):
-    response = input(f"\nCache file found ({os.path.getsize(CACHE_FILE)} bytes). Use it? (y/n): ").lower()
-    USE_CACHE = response == 'y'
-
-if USE_CACHE:
-    print("Loading from cache...")
+    print("Loading existing cache...")
     try:
         with open(CACHE_FILE, 'r', encoding='utf-8') as f:
-            all_results = json.load(f)
+            data = json.load(f)
+        if isinstance(data, dict) and "performances" in data:
+            all_results = data["performances"]
+            scraped_urls = set(data.get("scraped_urls", []))
+        elif isinstance(data, list):
+            all_results = data
         print(f"Loaded {len(all_results)} performances from cache\n")
-    except json.JSONDecodeError:
+    except (json.JSONDecodeError, KeyError):
         print("⚠️ Cache file is corrupted. Starting fresh...")
         all_results = []
-        USE_CACHE = False
-else:
+
+# =========================
+# DETERMINE NEW URLS
+# =========================
+urls_to_scrape = [url for url in URLS if url not in scraped_urls]
+
+if urls_to_scrape:
+    print(f"Scraping {len(urls_to_scrape)} new link(s)...\n")
+
     # =========================
     # CHROME OPTIONS
     # =========================
@@ -69,8 +77,8 @@ else:
         options=chrome_options
     )
 
-    for url_index, url in enumerate(URLS):
-        print(f"\n[{url_index + 1}/{len(URLS)}] Επεξεργασία: {url}")
+    for url_index, url in enumerate(urls_to_scrape):
+        print(f"\n[{url_index + 1}/{len(urls_to_scrape)}] Επεξεργασία: {url}")
 
         try:
             driver.get(url)
@@ -301,6 +309,9 @@ else:
     except Exception:
         pass
 
+    # Update scraped URLs
+    scraped_urls.update(urls_to_scrape)
+
     # Remove duplicates
     unique = {}
     for r in all_results:
@@ -314,10 +325,18 @@ else:
 
     all_results = list(unique.values())
 
+    # =========================
+    # SAVE CACHE
+    # =========================
     print(f"\nSaving {len(all_results)} performances to cache...")
     with open(CACHE_FILE, 'w', encoding='utf-8') as f:
-        json.dump(all_results, f, ensure_ascii=False, indent=2)
+        json.dump({
+            "performances": all_results,
+            "scraped_urls": list(scraped_urls)
+        }, f, ensure_ascii=False, indent=2)
     print("✓ Cache saved successfully")
+else:
+    print("All links already scraped. Using cached data.")
 
 
 # =========================
@@ -374,7 +393,7 @@ ws1.title = "All_Performances"
 
 ws1.append([
     "Rank", "Name", "Birth Year", "Club", "Performance",
-    "Wind", "Competition", "Date", "Location", "Heat", "Lane"
+    "Wind", "Competition", "Date", "Location", "Heat", "Lane", "Notes"
 ])
 
 sorted_all = sorted(
@@ -394,14 +413,15 @@ for i, r in enumerate(sorted_all, 1):
         r["date"],
         r["location"],
         r["heat"],
-        r["lane"]
+        r["lane"],
+        ""
     ])
 
 ws2 = wb.create_sheet("Season_Best")
 
 ws2.append([
     "Rank", "Name", "Birth Year", "Club", "Best Performance",
-    "Wind", "Competition", "Date", "Location", "Heat", "Lane"
+    "Wind", "Competition", "Date", "Location", "Heat", "Lane", "Notes"
 ])
 
 for i, r in enumerate(ranking, 1):
@@ -416,7 +436,8 @@ for i, r in enumerate(ranking, 1):
         r["date"],
         r["location"],
         r["heat"],
-        r["lane"]
+        r["lane"],
+        ""
     ])
 
 wb.save(filename)
