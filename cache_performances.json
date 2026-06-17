@@ -167,9 +167,131 @@
       "location": "ΙΩΑΝΝΙΝΑ, Greece",
       "heat": "Τελικός C",
       "lane": "3"
+    },
+    {
+      "name": "ΕΛΕΝΗ ΜΑΡΙΑ ΣΤΑΘΟΠΟΥΛΟΥ",
+      "birth_year": 2009,
+      "club": "ΓΣ ΧΑΝΙΩΝ \"ΝΕΑΡΧΟΣ\"",
+      "performance": "13.58w",
+      "wind": "+2.1",
+      "competition": "Roster Athletics · ΑΓΩΝΕΣ ΔΥΤΙΚΗΣ ΚΡΗΤΗΣ",
+      "date": "04/04/2026",
+      "location": "32 ΧΑΝΙΑ, Greece",
+      "heat": "Τελικός",
+      "lane": "4"
+    },
+    {
+      "name": "ΑΡΜΕΛΑ ΣΕΡΑ",
+      "birth_year": 2010,
+      "club": "ΑΟ ΘΥΕΛΛΑ ΚΑΛΑΘΕΝΩΝ ΚΙΣΑΜΟΥ",
+      "performance": "13.91w",
+      "wind": "+2.1",
+      "competition": "Roster Athletics · ΑΓΩΝΕΣ ΔΥΤΙΚΗΣ ΚΡΗΤΗΣ",
+      "date": "04/04/2026",
+      "location": "32 ΧΑΝΙΑ, Greece",
+      "heat": "Τελικός",
+      "lane": "2"
+    },
+    {
+      "name": "ΕΡΣΙΛΝΤΑ ΚΑΤΕΣΙ",
+      "birth_year": 2010,
+      "club": "ΑΟ ΘΥΕΛΛΑ ΚΑΛΑΘΕΝΩΝ ΚΙΣΑΜΟΥ",
+      "performance": "14.35w",
+      "wind": "+2.1",
+      "competition": "Roster Athletics · ΑΓΩΝΕΣ ΔΥΤΙΚΗΣ ΚΡΗΤΗΣ",
+      "date": "04/04/2026",
+      "location": "32 ΧΑΝΙΑ, Greece",
+      "heat": "Τελικός",
+      "lane": "3"
+    },
+    {
+      "name": "ΚΩΝΣΤΑΝΤΙΝΑ ΤΡΑΚΑΔΑ",
+      "birth_year": 2010,
+      "club": "192",
+      "performance": "ΑΣ ΘΗΡΑΣ \"ΗΦΑΙΣΤΟΣ\"",
+      "wind": "+3.9",
+      "competition": "Roster Athletics · Διασυλλογικό Πρωτάθλημα Κ18 Αντρών Γυναικών Μήλος 5 Απριλίου 2026",
+      "date": "05/04/2026",
+      "location": "NAXOS KAI MIKRES KYKLADES, Greece",
+      "heat": "Τελικός A",
+      "lane": "2"
+    },
+    {
+      "name": "ΑΡΤΕΜΙΣ ΠΑΠΑΔΟΠΟΥΛΟΥ",
+      "birth_year": 2010,
+      "club": "194",
+      "performance": "ΑΣ ΘΗΡΑΣ \"ΗΦΑΙΣΤΟΣ\"",
+      "wind": "+3.9",
+      "competition": "Roster Athletics · Διασυλλογικό Πρωτάθλημα Κ18 Αντρών Γυναικών Μήλος 5 Απριλίου 2026",
+      "date": "05/04/2026",
+      "location": "NAXOS KAI MIKRES KYKLADES, Greece",
+      "heat": "Τελικός A",
+      "lane": "1"
+    },
+    {
+      "name": "ΜΑΡΙΑ ΠΡΑΣΙΝΟΥ",
+      "birth_year": 2009,
+      "club": "193",
+      "performance": "ΑΣ ΘΗΡΑΣ \"ΗΦΑΙΣΤΟΣ\"",
+      "wind": "+3.9",
+      "competition": "Roster Athletics · Διασυλλογικό Πρωτάθλημα Κ18 Αντρών Γυναικών Μήλος 5 Απριλίου 2026",
+      "date": "05/04/2026",
+      "location": "NAXOS KAI MIKRES KYKLADES, Greece",
+      "heat": "Τελικός A",
+      "lane": "4"
+    },
+    {
+      "name": "ΚΩΝΣΤΑΝΤΙΝΑ-ΦΙΛΟΘΕΗ ΣΙΩΚΟΥ",
+      "birth_year": 2009,
+      "club": "304",
+      "performance": "ΑΟ ΜΥΚΟΝΟΥ",
+      "wind": "+3.9",
+      "competition": "Roster Athletics · Διασυλλογικό Πρωτάθλημα Κ18 Αντρών Γυναικών Μήλος 5 Απριλίου 2026",
+      "date": "05/04/2026",
+      "location": "NAXOS KAI MIKRES KYKLADES, Greece",
+      "heat": "Τελικός A",
+      "lane": "3"
+    },
+    {
+      "name": "ΟΛΥΜΠΙΑ ΚΑΛΛΙΟΠ ΠΑΝΤΕΛΑΙΟΥ",
+      "birth_year": 2010,
+      "club": "307",
+      "performance": "ΑΟ ΠΑΡΟΥ",
+      "wind": "+1.8",
+      "competition": "Roster Athletics · Διασυλλογικό Πρωτάθλημα Κ18 Αντρών Γυναικών Μήλος 5 Απριλίου 2026",
+      "date": "05/04/2026",
+      "location": "NAXOS KAI MIKRES KYKLADES, Greece",
+      "heat": "Τελικός B",
+      "lane": "2"
+    },
+    {
+      "name": "ΙΩΑΝΝΑ-ΕΥΑΓΓΕΛΙ ΠΑΠΑΔΟΠΟΥΛΟΥ",
+      "birth_year": 2009,
+      "club": "213",
+      "performance": "ΠΑΝΑΞΙΑΚΟΣ ΑΟ",
+      "wind": "+1.8",
+      "competition": "Roster Athletics · Διασυλλογικό Πρωτάθλημα Κ18 Αντρών Γυναικών Μήλος 5 Απριλίου 2026",
+      "date": "05/04/2026",
+      "location": "NAXOS KAI MIKRES KYKLADES, Greece",
+      "heat": "Τελικός B",
+      "lane": "3"
+    },
+    {
+      "name": "ΚΥΡΙΑΚΗ ΓΑΡΟΠΟΥΛΟΥ",
+      "birth_year": 2009,
+      "club": "305",
+      "performance": "ΑΟ ΜΥΚΟΝΟΥ",
+      "wind": "+1.8",
+      "competition": "Roster Athletics · Διασυλλογικό Πρωτάθλημα Κ18 Αντρών Γυναικών Μήλος 5 Απριλίου 2026",
+      "date": "05/04/2026",
+      "location": "NAXOS KAI MIKRES KYKLADES, Greece",
+      "heat": "Τελικός B",
+      "lane": "4"
     }
   ],
   "scraped_urls": [
+    "https://meets.rosterathletics.com/public/competitions/details/schedule?id=28620",
+    "https://meets.rosterathletics.com/public/competitions/details/schedule?id=28508",
     "https://meets.rosterathletics.com/public/competitions/details/schedule?id=28420"
   ]
 }

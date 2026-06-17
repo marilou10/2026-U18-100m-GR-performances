@@ -34,6 +34,14 @@ with open(LINKS_FILE, encoding="utf-8") as f:
 all_results = []
 scraped_urls = set()
 
+
+def perf_float(p):
+    if not p:
+        return 999.0
+    clean = re.sub(r'[^\d.]', '', p.replace("(", "").split()[0])
+    return float(clean) if clean else 999.0
+
+
 # =========================
 # LOAD EXISTING CACHE
 # =========================
@@ -47,6 +55,11 @@ if os.path.exists(CACHE_FILE):
             scraped_urls = set(data.get("scraped_urls", []))
         elif isinstance(data, list):
             all_results = data
+        # Filter out entries with unparseable performances
+        before = len(all_results)
+        all_results = [r for r in all_results if perf_float(r["performance"]) < 900]
+        if len(all_results) < before:
+            print(f"  Removed {before - len(all_results)} corrupted entry(ies)")
         print(f"Loaded {len(all_results)} performances from cache\n")
     except (json.JSONDecodeError, KeyError):
         print("⚠️ Cache file is corrupted. Starting fresh...")
@@ -56,6 +69,7 @@ if os.path.exists(CACHE_FILE):
 # DETERMINE NEW URLS
 # =========================
 urls_to_scrape = [url for url in URLS if url not in scraped_urls]
+print(f"Total links in file: {len(URLS)} | Already cached: {len(URLS) - len(urls_to_scrape)} | New: {len(urls_to_scrape)}")
 
 if urls_to_scrape:
     print(f"Scraping {len(urls_to_scrape)} new link(s)...\n")
@@ -301,6 +315,9 @@ if urls_to_scrape:
             print(f"❌ Error scraping {url}: {e}")
             continue
 
+        # URL scraped successfully — mark as done
+        scraped_urls.add(url)
+
     # =========================
     # CLOSE DRIVER
     # =========================
@@ -308,9 +325,6 @@ if urls_to_scrape:
         driver.quit()
     except Exception:
         pass
-
-    # Update scraped URLs
-    scraped_urls.update(urls_to_scrape)
 
     # Remove duplicates
     unique = {}
@@ -352,7 +366,7 @@ season_best = {}
 
 for r in all_results:
     try:
-        perf = float(r["performance"])
+        perf = perf_float(r["performance"])
     except ValueError:
         continue
 
@@ -361,12 +375,12 @@ for r in all_results:
     if key not in season_best:
         season_best[key] = r
     else:
-        if perf < float(season_best[key]["performance"]):
+        if perf < perf_float(season_best[key]["performance"]):
             season_best[key] = r
 
 ranking = sorted(
     season_best.values(),
-    key=lambda x: float(x["performance"])
+    key=lambda x: perf_float(x["performance"])
 )
 
 # =========================
@@ -398,7 +412,7 @@ ws1.append([
 
 sorted_all = sorted(
     all_results,
-    key=lambda x: float(x["performance"].replace("(", "").split()[0]) if x["performance"] else 999
+    key=lambda x: perf_float(x["performance"])
 )
 
 for i, r in enumerate(sorted_all, 1):
