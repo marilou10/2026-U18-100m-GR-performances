@@ -153,6 +153,8 @@ if urls_to_scrape:
                     "100μ" in text
                     and "Τελικός" in text
                     and "Εμπόδια" not in text
+                    and "4Χ100" not in text.upper()
+                    and "4X100" not in text.upper()
                     and ("Γυναίκες" in text or "Κορίτσια" in text)
                 ):
                     matching_indices.append(i)
