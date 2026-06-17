@@ -64,16 +64,15 @@ else:
     # =========================
     # SCRAPE LOOP
     # =========================
+    driver = webdriver.Chrome(
+        service=Service(ChromeDriverManager().install()),
+        options=chrome_options
+    )
+
     for url_index, url in enumerate(URLS):
         print(f"\n[{url_index + 1}/{len(URLS)}] Επεξεργασία: {url}")
 
-        driver = None
         try:
-            driver = webdriver.Chrome(
-                service=Service(ChromeDriverManager().install()),
-                options=chrome_options
-            )
-
             driver.get(url)
 
             try:
@@ -82,7 +81,6 @@ else:
                 )
             except TimeoutException:
                 print(f"⚠️ Timeout: Could not load schedule from {url}")
-                driver.quit()
                 continue
 
             time.sleep(2)
@@ -158,6 +156,14 @@ else:
                     driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", row)
                     time.sleep(1)
 
+                    anchors = row.find_elements(By.TAG_NAME, "a")
+                    if anchors:
+                        href = anchors[0].get_attribute("href")
+                        if href:
+                            results_urls.append(href)
+                            print(f"  ✓ Found results URL: {href}")
+                            continue
+
                     td = row.find_elements(By.TAG_NAME, "td")
                     target = td[1] if len(td) > 1 else row
 
@@ -171,14 +177,18 @@ else:
                     except TimeoutException:
                         print(f"  ⚠️ URL did not change after clicking row {i}")
                         driver.back()
-                        time.sleep(3)
+                        WebDriverWait(driver, 15).until(
+                            EC.presence_of_all_elements_located((By.CSS_SELECTOR, "tbody tr"))
+                        )
                         continue
 
                     current = driver.current_url
                     results_urls.append(current)
                     print(f"  ✓ Found results URL: {current}")
                     driver.back()
-                    time.sleep(3)
+                    WebDriverWait(driver, 15).until(
+                        EC.presence_of_all_elements_located((By.CSS_SELECTOR, "tbody tr"))
+                    )
 
                 except Exception as click_error:
                     print(f"  ⚠️ Could not click row {i}: {click_error}")
@@ -283,12 +293,13 @@ else:
             print(f"❌ Error scraping {url}: {e}")
             continue
 
-        finally:
-            if driver:
-                try:
-                    driver.quit()
-                except Exception:
-                    pass
+    # =========================
+    # CLOSE DRIVER
+    # =========================
+    try:
+        driver.quit()
+    except Exception:
+        pass
 
     # Remove duplicates
     unique = {}
