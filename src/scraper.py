@@ -15,6 +15,7 @@ import json
 import time
 import sys
 import subprocess
+import re
 
 
 LINKS_FILE = os.path.join(
@@ -57,7 +58,7 @@ else:
     chrome_options = Options()
     chrome_options.add_argument("--disable-blink-features=AutomationControlled")
     chrome_options.add_argument("--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
-    chrome_options.add_argument("--disable-dev-shm-usage")
+    chrome_options.add_argument("--disable-dev-shm-features")
     chrome_options.add_argument("--no-sandbox")
 
     # =========================
@@ -85,6 +86,39 @@ else:
                 continue
 
             time.sleep(2)
+
+            # =========================
+            # SCRAPE MEET INFO
+            # =========================
+            body_text = driver.find_element(By.TAG_NAME, "body").text
+            lines = body_text.split("\n")
+
+            meet_name = ""
+            meet_date = ""
+            meet_location = ""
+
+            for i, line in enumerate(lines):
+                line = line.strip()
+                if line == "ΟΝΟΜΑ" and i + 1 < len(lines):
+                    raw = lines[i + 1].strip()
+                    if " · " in raw:
+                        meet_name = raw.split(" · ", 1)[1].strip()
+                    else:
+                        meet_name = raw
+                if line == "ΗΜΕΡΟΜΗΝΙΑ & ΩΡΑ" and i + 1 < len(lines):
+                    raw = lines[i + 1].strip()
+                    meet_date = raw[:10]
+                if line == "ΠΟΛΗ & ΧΩΡΑ" and i + 1 < len(lines):
+                    raw = lines[i + 1].strip()
+                    meet_location = re.sub(r'^\d+\s*', '', raw).strip()
+
+            # Remove "Roster Athletics · " prefix if present
+            meet_name = re.sub(r'^Roster Athletics\s*·\s*', '', meet_name).strip()
+
+            if not meet_name:
+                meet_name = driver.title.strip()
+
+            print(f"  Meet: {meet_name} | Date: {meet_date} | Location: {meet_location}")
 
             # =========================
             # FIND WOMEN'S 100m FINALS
@@ -180,21 +214,19 @@ else:
                     for line in lines:
                         line = line.strip()
                         if "100μ" in line and "Τελικός" in line:
-                            heat_name = line
+                            parts = line.split("Τελικός")
+                            if len(parts) > 1:
+                                after = parts[1].strip()
+                                letter = after.split()[0] if after else ""
+                                heat_name = f"Τελικός {letter}" if letter else "Τελικός"
                             break
 
-                    date = ""
-                    location = ""
                     wind = ""
-
-                    for i, line in enumerate(lines):
+                    for line in lines:
                         line = line.strip()
-                        if line == "ΗΜΕΡΟΜΗΝΙΑ & ΩΡΑ" and i + 1 < len(lines):
-                            date = lines[i + 1].strip()
-                        if line == "ΠΟΛΗ & ΧΩΡΑ" and i + 1 < len(lines):
-                            location = lines[i + 1].strip()
                         if line.startswith("Άνεμος:"):
                             wind = line.replace("Άνεμος:", "").strip()
+                            break
 
                     result_rows = driver.find_elements(By.CSS_SELECTOR, "tbody tr")
                     print(f"  ✓ Βρέθηκαν {len(result_rows)} γραμμές")
@@ -233,9 +265,9 @@ else:
                                     "club": club,
                                     "performance": performance,
                                     "wind": wind,
-                                    "competition": url,
-                                    "date": date,
-                                    "location": location,
+                                    "competition": meet_name,
+                                    "date": meet_date,
+                                    "location": meet_location,
                                     "heat": heat_name,
                                     "lane": lane
                                 })
@@ -276,6 +308,12 @@ else:
         json.dump(all_results, f, ensure_ascii=False, indent=2)
     print("✓ Cache saved successfully")
 
+
+# =========================
+# CLEAN COMPETITION NAMES
+# =========================
+for r in all_results:
+    r["competition"] = re.sub(r'^Roster Athletics\s*·\s*', '', r["competition"]).strip()
 
 # =========================
 # SEASON BEST
@@ -324,13 +362,18 @@ ws1 = wb.active
 ws1.title = "All_Performances"
 
 ws1.append([
-    "Name", "Birth Year", "Club", "Performance",
-    "Wind", "Competition", "Date", "Location",
-    "Heat", "Lane"
+    "Rank", "Name", "Birth Year", "Club", "Performance",
+    "Wind", "Competition", "Date", "Location", "Heat", "Lane"
 ])
 
-for r in all_results:
+sorted_all = sorted(
+    all_results,
+    key=lambda x: float(x["performance"].replace("(", "").split()[0]) if x["performance"] else 999
+)
+
+for i, r in enumerate(sorted_all, 1):
     ws1.append([
+        i,
         r["name"],
         r["birth_year"],
         r["club"],
@@ -346,8 +389,8 @@ for r in all_results:
 ws2 = wb.create_sheet("Season_Best")
 
 ws2.append([
-    "Rank", "Name", "Birth Year", "Club",
-    "Best Performance", "Wind", "Date", "Location", "Heat", "Lane"
+    "Rank", "Name", "Birth Year", "Club", "Best Performance",
+    "Wind", "Competition", "Date", "Location", "Heat", "Lane"
 ])
 
 for i, r in enumerate(ranking, 1):
@@ -358,6 +401,7 @@ for i, r in enumerate(ranking, 1):
         r["club"],
         r["performance"],
         r["wind"],
+        r["competition"],
         r["date"],
         r["location"],
         r["heat"],
