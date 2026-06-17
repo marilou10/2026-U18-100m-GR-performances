@@ -5,6 +5,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException
+from selenium.webdriver.common.action_chains import ActionChains
 from webdriver_manager.chrome import ChromeDriverManager
 
 from openpyxl import Workbook
@@ -14,13 +15,7 @@ import json
 import time
 import sys
 import subprocess
-import re
-from urllib.parse import urlparse, parse_qs
 
-
-# =========================
-# MEETS (heats / finals)
-# =========================
 
 LINKS_FILE = os.path.join(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
@@ -34,7 +29,6 @@ CACHE_FILE = os.path.join(
 
 with open(LINKS_FILE, encoding="utf-8") as f:
     URLS = [line.strip() for line in f if line.strip()]
-
 
 all_results = []
 
@@ -67,159 +61,170 @@ else:
     chrome_options.add_argument("--no-sandbox")
 
     # =========================
-    # HELPER FUNCTION: Extract 100m finals meIds
-    # =========================
-    def extract_100m_finals_meids(driver, race_url):
-        """
-        Given a race schedule page, find all 100m finals and return their meIds
-        """
-        meids = []
-        try:
-            # Wait for the schedule to load
-            WebDriverWait(driver, 15).until(
-                EC.presence_of_all_elements_located((By.CSS_SELECTOR, "a[href*='meId']"))
-            )
-            
-            time.sleep(2)
-            
-            # Get all event links
-            event_links = driver.find_elements(By.CSS_SELECTOR, "a[href*='meId']")
-            
-            for link in event_links:
-                link_text = link.text.strip()
-                link_href = link.get_attribute("href")
-                
-                # Check if it's a 100m final
-                if "100μ" in link_text and "Τελικός" in link_text:
-                    # Extract meId from URL
-                    match = re.search(r'meId=(\d+)', link_href)
-                    if match:
-                        meid = match.group(1)
-                        meids.append({
-                            "meId": meid,
-                            "event_name": link_text,
-                            "race_url": race_url
-                        })
-                        print(f"  ✓ Found: {link_text} (meId: {meid})")
-            
-            if not meids:
-                print(f"  ⚠️ No 100m finals found on this page")
-        
-        except Exception as e:
-            print(f"  ⚠️ Error extracting meIds: {e}")
-        
-        return meids
-
-    # =========================
     # SCRAPE LOOP
     # =========================
-    for url_index, race_url in enumerate(URLS):
-        print(f"\n[{url_index + 1}/{len(URLS)}] Processing race: {race_url}")
-        
+    for url_index, url in enumerate(URLS):
+        print(f"\n[{url_index + 1}/{len(URLS)}] Επεξεργασία: {url}")
+
         driver = None
         try:
-            # Create new driver for this race
             driver = webdriver.Chrome(
                 service=Service(ChromeDriverManager().install()),
                 options=chrome_options
             )
-            
-            # Load the race schedule page to find 100m finals
-            driver.get(race_url)
-            
-            # Extract all 100m finals meIds
-            finals = extract_100m_finals_meids(driver, race_url)
-            
-            if not finals:
-                print(f"  Skipping race (no 100m finals found)")
+
+            driver.get(url)
+
+            try:
+                WebDriverWait(driver, 15).until(
+                    EC.presence_of_all_elements_located((By.CSS_SELECTOR, "tbody tr"))
+                )
+            except TimeoutException:
+                print(f"⚠️ Timeout: Could not load schedule from {url}")
                 driver.quit()
                 continue
-            
-            # Now scrape each 100m final
-            for final_index, final in enumerate(finals):
-                meid = final["meId"]
-                event_name = final["event_name"]
-                
-                # Build the final results page URL
-                # Extract the race id from the race_url
-                race_id_match = re.search(r'id=(\d+)', race_url)
-                if not race_id_match:
-                    print(f"    Could not extract race ID from {race_url}")
-                    continue
-                
-                race_id = race_id_match.group(1)
-                final_url = f"https://meets.rosterathletics.com/public/competitions/details/results?id={race_id}&meId={meid}"
-                
-                print(f"\n    [{final_index + 1}/{len(finals)}] Scraping: {event_name}")
-                print(f"    URL: {final_url}")
-                
+
+            time.sleep(2)
+
+            # =========================
+            # FIND WOMEN'S 100m FINALS
+            # =========================
+            rows = driver.find_elements(By.CSS_SELECTOR, "tbody tr")
+            print(f"  Found {len(rows)} rows in schedule")
+
+            matching_indices = []
+            for i, row in enumerate(rows):
+                text = row.text.strip()
+                if (
+                    "100μ" in text
+                    and "Τελικός" in text
+                    and "Εμπόδια" not in text
+                    and ("Γυναίκες" in text or "Κορίτσια" in text)
+                ):
+                    matching_indices.append(i)
+                    print(f"  ✓ Matched row {i}: {repr(text)}")
+
+            print(f"  Found {len(matching_indices)} matching women's 100m finals rows")
+
+            results_urls = []
+
+            for i in matching_indices:
                 try:
-                    # Load the final results page
-                    driver.get(final_url)
-                    
-                    # Wait for table to load (max 15 seconds)
+                    WebDriverWait(driver, 15).until(
+                        EC.presence_of_all_elements_located((By.CSS_SELECTOR, "tbody tr"))
+                    )
+                    time.sleep(1)
+                    rows = driver.find_elements(By.CSS_SELECTOR, "tbody tr")
+
+                    if i >= len(rows):
+                        print(f"  ⚠️ Row {i} no longer exists (only {len(rows)} rows)")
+                        continue
+
+                    row = rows[i]
+                    driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", row)
+                    time.sleep(1)
+
+                    td = row.find_elements(By.TAG_NAME, "td")
+                    target = td[1] if len(td) > 1 else row
+
+                    actions = ActionChains(driver)
+                    actions.move_to_element(target).click().perform()
+
+                    try:
+                        WebDriverWait(driver, 10).until(
+                            lambda d: "meId" in d.current_url
+                        )
+                    except TimeoutException:
+                        print(f"  ⚠️ URL did not change after clicking row {i}")
+                        driver.back()
+                        time.sleep(3)
+                        continue
+
+                    current = driver.current_url
+                    results_urls.append(current)
+                    print(f"  ✓ Found results URL: {current}")
+                    driver.back()
+                    time.sleep(3)
+
+                except Exception as click_error:
+                    print(f"  ⚠️ Could not click row {i}: {click_error}")
+                    continue
+
+            if not results_urls:
+                print(f"  ⚠️ No women's 100m finals found in {url}")
+                continue
+
+            # =========================
+            # SCRAPE EACH RESULTS PAGE
+            # =========================
+            for results_url in results_urls:
+                print(f"  Scraping results: {results_url}")
+
+                try:
+                    driver.get(results_url)
+
                     try:
                         WebDriverWait(driver, 15).until(
                             EC.presence_of_all_elements_located((By.CSS_SELECTOR, "tbody tr"))
                         )
                     except TimeoutException:
-                        print(f"    ⚠️ Timeout: Could not load table data from {final_url}")
+                        print(f"  ⚠️ Timeout loading results: {results_url}")
                         continue
-                    
-                    # Extra wait for content to render
+
                     time.sleep(2)
-                    
-                    heat_name = event_name
+
                     body_text = driver.find_element(By.TAG_NAME, "body").text
                     lines = body_text.split("\n")
+
+                    heat_name = ""
+                    for line in lines:
+                        line = line.strip()
+                        if "100μ" in line and "Τελικός" in line:
+                            heat_name = line
+                            break
 
                     date = ""
                     location = ""
                     wind = ""
 
-                    # Extract date, location, and wind
                     for i, line in enumerate(lines):
                         line = line.strip()
-
                         if line == "ΗΜΕΡΟΜΗΝΙΑ & ΩΡΑ" and i + 1 < len(lines):
                             date = lines[i + 1].strip()
-
                         if line == "ΠΟΛΗ & ΧΩΡΑ" and i + 1 < len(lines):
                             location = lines[i + 1].strip()
-
                         if line.startswith("Άνεμος:"):
                             wind = line.replace("Άνεμος:", "").strip()
 
-                    rows = driver.find_elements(By.CSS_SELECTOR, "tbody tr")
+                    result_rows = driver.find_elements(By.CSS_SELECTOR, "tbody tr")
+                    print(f"  ✓ Βρέθηκαν {len(result_rows)} γραμμές")
 
-                    print(f"    ✓ Found {len(rows)} athletes")
-
-                    for row in rows:
+                    for row in result_rows:
                         try:
                             cells = row.find_elements(By.TAG_NAME, "td")
 
-                            if len(cells) < 6:
+                            if len(cells) < 5:
                                 continue
 
                             lane = cells[1].text.strip()
-
                             athlete_info = cells[2].text.split("\n")
-
                             name = athlete_info[0].strip()
+
+                            if len(athlete_info) < 2:
+                                continue
 
                             try:
                                 birth_year = int(athlete_info[1].strip())
                             except ValueError:
                                 continue
 
-                            club = cells[4].text.strip()
-
-                            performance_text = cells[5].text.split("\n")[0].strip()
+                            club = cells[3].text.strip()
+                            performance_text = cells[4].text.split("\n")[0].strip()
 
                             if performance_text == "" or "DNS" in performance_text or "DNF" in performance_text:
                                 continue
 
-                            performance = performance_text.replace("SB", "").strip()
+                            performance = performance_text.replace("SB", "").replace("PB", "").strip()
 
                             if 2009 <= birth_year <= 2012:
                                 all_results.append({
@@ -228,24 +233,24 @@ else:
                                     "club": club,
                                     "performance": performance,
                                     "wind": wind,
-                                    "competition": race_url,
+                                    "competition": url,
                                     "date": date,
                                     "location": location,
                                     "heat": heat_name,
                                     "lane": lane
                                 })
                         except Exception as row_error:
-                            print(f"      ⚠️ Error parsing row: {row_error}")
+                            print(f"    ⚠️ Error parsing row: {row_error}")
                             continue
 
-                except Exception as final_error:
-                    print(f"    ❌ Error scraping final: {final_error}")
+                except Exception as results_error:
+                    print(f"  ❌ Error scraping results page: {results_error}")
                     continue
 
         except Exception as e:
-            print(f"❌ Error processing race {race_url}: {e}")
+            print(f"❌ Error scraping {url}: {e}")
             continue
-        
+
         finally:
             if driver:
                 try:
@@ -266,7 +271,6 @@ else:
 
     all_results = list(unique.values())
 
-    # Save to cache
     print(f"\nSaving {len(all_results)} performances to cache...")
     with open(CACHE_FILE, 'w', encoding='utf-8') as f:
         json.dump(all_results, f, ensure_ascii=False, indent=2)
@@ -290,7 +294,7 @@ for r in all_results:
         season_best[key] = r
     else:
         if perf < float(season_best[key]["performance"]):
-            season_best[key] = r  
+            season_best[key] = r
 
 ranking = sorted(
     season_best.values(),
@@ -310,7 +314,6 @@ filename = os.path.join(
     output_dir,
     f"2026_U18_100m_GR_{timestamp}.xlsx"
 )
-
 
 # =========================
 # EXCEL
@@ -344,7 +347,7 @@ ws2 = wb.create_sheet("Season_Best")
 
 ws2.append([
     "Rank", "Name", "Birth Year", "Club",
-    "Best Performance", "Heat", "Lane"
+    "Best Performance", "Wind", "Date", "Location", "Heat", "Lane"
 ])
 
 for i, r in enumerate(ranking, 1):
@@ -354,10 +357,12 @@ for i, r in enumerate(ranking, 1):
         r["birth_year"],
         r["club"],
         r["performance"],
+        r["wind"],
+        r["date"],
+        r["location"],
         r["heat"],
         r["lane"]
     ])
-
 
 wb.save(filename)
 
@@ -368,10 +373,9 @@ print(f"Excel file: {filename}")
 print(f"Total performances: {len(all_results)}")
 print(f"Season best athletes: {len(ranking)}")
 
-# Open file with cross-platform support
 if sys.platform == "win32":
     os.startfile(filename)
 elif sys.platform == "darwin":
     subprocess.run(["open", filename])
-else:  # Linux
+else:
     subprocess.run(["xdg-open", filename])
