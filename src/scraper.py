@@ -105,7 +105,7 @@ if urls_to_scrape:
                 print(f"⚠️ Timeout: Could not load schedule from {url}")
                 continue
 
-            time.sleep(2)
+            time.sleep(1)
 
             # =========================
             # SCRAPE MEET INFO
@@ -169,7 +169,7 @@ if urls_to_scrape:
                     WebDriverWait(driver, 15).until(
                         EC.presence_of_all_elements_located((By.CSS_SELECTOR, "tbody tr"))
                     )
-                    time.sleep(1)
+                    time.sleep(0.5)
                     rows = driver.find_elements(By.CSS_SELECTOR, "tbody tr")
 
                     if i >= len(rows):
@@ -178,7 +178,7 @@ if urls_to_scrape:
 
                     row = rows[i]
                     driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", row)
-                    time.sleep(1)
+                    time.sleep(0.5)
 
                     anchors = row.find_elements(By.TAG_NAME, "a")
                     if anchors:
@@ -239,7 +239,7 @@ if urls_to_scrape:
                         print(f"  ⚠️ Timeout loading results: {results_url}")
                         continue
 
-                    time.sleep(2)
+                    time.sleep(1)
 
                     body_text = driver.find_element(By.TAG_NAME, "body").text
                     lines = body_text.split("\n")
