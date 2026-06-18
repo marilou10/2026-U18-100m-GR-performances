@@ -632,7 +632,32 @@ for r in all_results:
         greek_attempt = latin_to_greek(r['name'])
         # Only use if all characters successfully mapped (no leftover ASCII letters)
         if not any('A' <= c <= 'Z' for c in greek_attempt.upper()):
-            r['name'] = greek_attempt
+            # Only convert if name contains at least one strong Greek digraph
+            # (avoids false conversion of non-Greek names like NIKOLOVA, DAHLGREN)
+            GREEK_STRONG_DIGRAPHS = {"CH","TH","PS","OU","MP","NT","GK","NG","TZ","AY","EY","AV","EV"}
+            upper_name = r['name'].upper()
+            surname = upper_name.split()[-1] if ' ' in upper_name else upper_name
+            has_strong = False
+            for d in GREEK_STRONG_DIGRAPHS:
+                if d not in upper_name:
+                    continue
+                # Skip "EV" when it's part of "-EVA" Bulgarian patronymic suffix
+                if d == "EV" and surname.endswith("EVA") and "EV" in surname[-3:]:
+                    continue
+                has_strong = True
+                break
+            if has_strong:
+                r['name'] = greek_attempt
+
+# =========================
+# FILTER NON-GREEK ATHLETES
+# =========================
+# Athletes whose names remain in Latin after all normalization passes are non-Greek
+before = len(all_results)
+all_results = [r for r in all_results if any('\u0370' <= c <= '\u03FF' for c in r['name'])]
+removed = before - len(all_results)
+if removed:
+    print(f"[OK] Removed {removed} entries by non-Greek athletes")
 
 # =========================
 # SEASON BEST
