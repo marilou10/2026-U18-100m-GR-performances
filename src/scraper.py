@@ -28,8 +28,27 @@ CACHE_FILE = os.path.join(
     "cache_performances.json"
 )
 
-with open(LINKS_FILE, encoding="utf-8") as f:
-    URLS = [line.strip() for line in f if line.strip()]
+# Load URLs and auto-convert about?id= to schedule?id=
+fixed_links = []
+with open(LINKS_FILE, 'r', encoding="utf-8") as f:
+    raw_lines = f.readlines()
+
+for line in raw_lines:
+    stripped = line.strip()
+    if not stripped:
+        fixed_links.append(line)
+        continue
+    original = stripped
+    stripped = stripped.replace("about?id=", "schedule?id=")
+    fixed_links.append(stripped + "\n")
+
+URLS = [l.strip() for l in fixed_links if l.strip()]
+
+# Save back if any about?id= were replaced
+if any("about?id=" in l for l in raw_lines):
+    with open(LINKS_FILE, 'w', encoding="utf-8") as f:
+        f.writelines(fixed_links)
+    print("[OK] Auto-converted about?id= to schedule?id= in meet_links.txt")
 
 all_results = []
 scraped_urls = set()
