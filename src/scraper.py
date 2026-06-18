@@ -130,11 +130,11 @@ if os.path.exists(CACHE_FILE):
             scraped_urls = set(data.get("scraped_urls", []))
         elif isinstance(data, list):
             all_results = data
-        # Filter out entries with unparseable performances
+        # Filter out entries with unparseable or non-100m performances
         before = len(all_results)
-        all_results = [r for r in all_results if perf_float(r["performance"]) < 900]
+        all_results = [r for r in all_results if 0 < perf_float(r["performance"]) < 25.0]
         if len(all_results) < before:
-            print(f"  Removed {before - len(all_results)} corrupted entry(ies)")
+            print(f"  Removed {before - len(all_results)} corrupted/non-100m entry(ies)")
         print(f"Loaded {len(all_results)} performances from cache\n")
     except (json.JSONDecodeError, KeyError):
         print("[WARN] Cache file is corrupted. Starting fresh...")
@@ -343,15 +343,21 @@ if urls_to_scrape:
                             lines = body_text.split("\n")
 
                             heat_name = ""
+                            has_100m = False
                             for line in lines:
                                 line = line.strip()
                                 if "100μ" in line and "Τελικός" in line:
+                                    has_100m = True
                                     parts = line.split("Τελικός")
                                     if len(parts) > 1:
                                         after = parts[1].strip()
                                         letter = after.split()[0] if after else ""
                                         heat_name = f"Τελικός {letter}" if letter else "Τελικός"
                                     break
+
+                            if not has_100m:
+                                print(f"[W{worker_id}]   [SKIP] No 100m event on this results page")
+                                continue
 
                             wind = ""
                             for line in lines:
@@ -360,7 +366,22 @@ if urls_to_scrape:
                                     wind = line.replace("Άνεμος:", "").strip()
                                     break
 
-                            result_rows = driver.find_elements(By.CSS_SELECTOR, "tbody tr")
+                            # Find the specific table belonging to the 100m event (skip other tables on the page)
+                            try:
+                                tables = driver.find_elements(By.TAG_NAME, "table")
+                                table_100m = None
+                                for t in tables:
+                                    before = t.find_elements(By.XPATH, "./preceding::*[contains(., '100μ') and contains(., 'Τελικός')][1]")
+                                    if before:
+                                        table_100m = t
+                                        break
+                                if table_100m:
+                                    result_rows = table_100m.find_elements(By.CSS_SELECTOR, "tbody tr")
+                                else:
+                                    result_rows = driver.find_elements(By.CSS_SELECTOR, "tbody tr")
+                            except Exception:
+                                print(f"[W{worker_id}]   [WARN] Could not isolate 100m table, using all rows")
+                                result_rows = driver.find_elements(By.CSS_SELECTOR, "tbody tr")
                             print(f"[W{worker_id}]   [OK] Βρέθηκαν {len(result_rows)} γραμμές")
 
                             for row in result_rows:
@@ -385,6 +406,9 @@ if urls_to_scrape:
                                     performance, perf_idx = find_performance_cell(row)
 
                                     if not performance:
+                                        continue
+
+                                    if perf_float(performance) > 25.0:
                                         continue
 
                                     all_cells = row.find_elements(By.TAG_NAME, "td")
@@ -477,6 +501,14 @@ if urls_to_scrape:
     print("[OK] Cache saved successfully")
 else:
     print("All links already scraped. Using cached data.")
+    # Re-save cache so cleanup filters (non-100m entries) persist on disk
+    print(f"Saving {len(all_results)} performances to cache...")
+    with open(CACHE_FILE, 'w', encoding='utf-8') as f:
+        json.dump({
+            "performances": all_results,
+            "scraped_urls": list(scraped_urls)
+        }, f, ensure_ascii=False, indent=2)
+    print("[OK] Cache saved successfully")
 
 
 # =========================
