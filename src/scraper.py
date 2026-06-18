@@ -536,7 +536,7 @@ if urls_to_scrape:
     with open(CACHE_FILE, 'w', encoding='utf-8') as f:
         json.dump({
             "performances": all_results,
-            "scraped_urls": list(scraped_urls)
+            "scraped_urls": sorted(scraped_urls)
         }, f, ensure_ascii=False, indent=2)
     print("[OK] Cache saved successfully")
 else:
@@ -545,7 +545,7 @@ else:
     with open(CACHE_FILE, 'w', encoding='utf-8') as f:
         json.dump({
             "performances": all_results,
-            "scraped_urls": list(scraped_urls)
+            "scraped_urls": sorted(scraped_urls)
         }, f, ensure_ascii=False, indent=2)
     print("[OK] Cache saved successfully")
 
