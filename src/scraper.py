@@ -107,11 +107,14 @@ if urls_to_scrape:
                 return perf, idx
         return None, None
 
-    def worker(urls_batch, worker_id):
-        driver = webdriver.Chrome(
+    def start_driver():
+        return webdriver.Chrome(
             service=Service(ChromeDriverManager().install()),
             options=chrome_options
         )
+
+    def worker(urls_batch, worker_id):
+        driver = start_driver()
         local_results = []
         succeeded = []
         try:
@@ -126,6 +129,7 @@ if urls_to_scrape:
                         )
                     except TimeoutException:
                         print(f"[W{worker_id}]   [WARN] Timeout: Could not load schedule from {url}")
+                        succeeded.append(url)
                         continue
 
                     time.sleep(1)
@@ -242,6 +246,7 @@ if urls_to_scrape:
 
                     if not results_urls:
                         print(f"[W{worker_id}]   [WARN] No women's 100m finals found in {url}")
+                        succeeded.append(url)
                         continue
 
                     # =========================
@@ -313,6 +318,8 @@ if urls_to_scrape:
 
                                     all_cells = row.find_elements(By.TAG_NAME, "td")
                                     club = all_cells[perf_idx - 1].text.strip() if perf_idx and perf_idx > 0 else ""
+                                    if club and name and club == name.split()[-1]:
+                                        club = ""
 
                                     if 2009 <= birth_year <= 2012:
                                         local_results.append({
@@ -337,6 +344,12 @@ if urls_to_scrape:
 
                 except Exception as e:
                     print(f"[W{worker_id}]   [ERR] Error scraping {url}: {e}")
+                    if "invalid session id" in str(e).lower() or "no such window" in str(e).lower():
+                        try:
+                            driver.quit()
+                        except Exception:
+                            pass
+                        driver = start_driver()
                     continue
 
                 succeeded.append(url)
