@@ -496,6 +496,15 @@ for r in all_results:
     r["competition"] = re.sub(r'^Roster Athletics\s*·\s*', '', r["competition"]).strip()
     r["location"] = re.sub(r'^\d+\s*', '', r["location"]).strip()
 
+# Backfill missing clubs from other entries of the same athlete
+club_lookup = {}
+for r in all_results:
+    if r.get("club", "").strip():
+        club_lookup.setdefault(r["name"], set()).add(r["club"].strip())
+for r in all_results:
+    if not r.get("club", "").strip() and r["name"] in club_lookup:
+        r["club"] = list(club_lookup[r["name"]])[0]
+
 if urls_to_scrape:
     # =========================
     # SAVE CACHE
