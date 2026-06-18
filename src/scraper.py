@@ -668,7 +668,7 @@ for i, r in enumerate(sorted_all, 1):
         r["wind"],
         r["competition"].upper(),
         r["date"],
-        r["location"],
+        r["location"].upper(),
         r["heat"],
         r["lane"],
         ""
@@ -691,7 +691,7 @@ for i, r in enumerate(ranking, 1):
         r["wind"],
         r["competition"].upper(),
         r["date"],
-        r["location"],
+        r["location"].upper(),
         r["heat"],
         r["lane"],
         ""
