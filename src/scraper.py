@@ -684,6 +684,37 @@ ranking = sorted(
 )
 
 # =========================
+# WIND-LEGAL BEST
+# =========================
+def is_wind_legal(r):
+    if 'w' in r['performance']:
+        return False
+    w = r['wind'].strip().lstrip('+')
+    if w.upper() == 'NWI':
+        return True
+    try:
+        return float(w) <= 2.0
+    except ValueError:
+        return True
+
+wind_legal_best = {}
+for r in all_results:
+    if not is_wind_legal(r):
+        continue
+    try:
+        perf = perf_float(r["performance"])
+    except ValueError:
+        continue
+    key = (norm_full(r["name"]), r["birth_year"])
+    if key not in wind_legal_best or perf < perf_float(wind_legal_best[key]["performance"]):
+        wind_legal_best[key] = r
+
+wind_legal_ranking = sorted(
+    wind_legal_best.values(),
+    key=lambda x: perf_float(x["performance"])
+)
+
+# =========================
 # OUTPUT FILE
 # =========================
 base_dir = os.path.dirname(os.path.abspath(__file__))
@@ -754,6 +785,29 @@ for i, r in enumerate(ranking, 1):
         ""
     ])
 
+ws3 = wb.create_sheet("Wind_Legal_Best")
+
+ws3.append([
+    "Rank", "Name", "Birth Year", "Club", "Best Performance",
+    "Wind", "Competition", "Date", "Location", "Heat", "Lane", "Notes"
+])
+
+for i, r in enumerate(wind_legal_ranking, 1):
+    ws3.append([
+        i,
+        r["name"],
+        r["birth_year"],
+        r["club"].upper(),
+        r["performance"],
+        r["wind"],
+        r["competition"].upper(),
+        r["date"],
+        r["location"].upper(),
+        r["heat"],
+        r["lane"],
+        ""
+    ])
+
 wb.save(filename)
 
 print("\n" + "="*50)
@@ -762,6 +816,7 @@ print("="*50)
 print(f"Excel file: {filename}")
 print(f"Total performances: {len(all_results)}")
 print(f"Season best athletes: {len(ranking)}")
+print(f"Wind-legal best athletes: {len(wind_legal_ranking)}")
 
 if sys.platform == "win32":
     os.startfile(filename)
