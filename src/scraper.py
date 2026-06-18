@@ -502,6 +502,7 @@ if urls_to_scrape:
 for r in all_results:
     r["competition"] = re.sub(r'^Roster Athletics\s*·\s*', '', r["competition"]).strip()
     r["location"] = re.sub(r'^\d+\s*', '', r["location"]).strip()
+    r["location"] = re.sub(r', ([^,]+), \1$', r', \1', r["location"])
 
 # Backfill missing clubs from other entries of the same athlete (cross-script)
 club_lookup = {}
