@@ -46,6 +46,58 @@ def perf_float(p):
         return 999.0
 
 
+GREEK_TO_LATIN = {
+    ord('Α'): 'A', ord('α'): 'a',
+    ord('Β'): 'V', ord('β'): 'v',
+    ord('Γ'): 'G', ord('γ'): 'g',
+    ord('Δ'): 'D', ord('δ'): 'd',
+    ord('Ε'): 'E', ord('ε'): 'e',
+    ord('Ζ'): 'Z', ord('ζ'): 'z',
+    ord('Η'): 'I', ord('η'): 'i',
+    ord('Θ'): 'TH', ord('θ'): 'th',
+    ord('Ι'): 'I', ord('ι'): 'i',
+    ord('Κ'): 'K', ord('κ'): 'k',
+    ord('Λ'): 'L', ord('λ'): 'l',
+    ord('Μ'): 'M', ord('μ'): 'm',
+    ord('Ν'): 'N', ord('ν'): 'n',
+    ord('Ξ'): 'X', ord('ξ'): 'x',
+    ord('Ο'): 'O', ord('ο'): 'o',
+    ord('Π'): 'P', ord('π'): 'p',
+    ord('Ρ'): 'R', ord('ρ'): 'r',
+    ord('Σ'): 'S', ord('σ'): 's', ord('ς'): 's',
+    ord('Τ'): 'T', ord('τ'): 't',
+    ord('Υ'): 'Y', ord('υ'): 'y',
+    ord('Φ'): 'F', ord('φ'): 'f',
+    ord('Χ'): 'CH', ord('χ'): 'ch',
+    ord('Ψ'): 'PS', ord('ψ'): 'ps',
+    ord('Ω'): 'O', ord('ω'): 'o',
+    ord('Ά'): 'A', ord('ά'): 'a',
+    ord('Έ'): 'E', ord('έ'): 'e',
+    ord('Ή'): 'I', ord('ή'): 'i',
+    ord('Ί'): 'I', ord('ί'): 'i', ord('ΐ'): 'i',
+    ord('Ό'): 'O', ord('ό'): 'o',
+    ord('Ύ'): 'Y', ord('ύ'): 'y', ord('ΰ'): 'y',
+    ord('Ώ'): 'O', ord('ώ'): 'o',
+}
+
+def normalize_name(name):
+    """Transliterate Greek to Latin so ΓΕΩΡΓΙΑ ΣΤΑΘΟΠΟΥΛΟΥ and GEORGIA STATHOPOULOU match."""
+    return name.translate(GREEK_TO_LATIN).upper().strip()
+
+def nk_latin(name):
+    """Extract surname as Latin string for cross-script matching."""
+    n = normalize_name(name)
+    n = n.replace("OY", "OU")
+    parts = n.split()
+    return parts[-1] if parts else ""
+
+def norm_full(name):
+    """Full name normalized to Latin, for cross-script identity matching."""
+    n = normalize_name(name)
+    n = n.replace("OY", "OU").replace("GG", "NG")
+    return n
+
+
 # =========================
 # LOAD EXISTING CACHE
 # =========================
@@ -415,6 +467,25 @@ for r in all_results:
     r["competition"] = re.sub(r'^Roster Athletics\s*·\s*', '', r["competition"]).strip()
 
 # =========================
+# NORMALIZE NAMES TO GREEK
+# =========================
+# Build a mapping of (normalized_name, year) -> preferred Greek name
+preferred_names = {}
+for r in all_results:
+    has_greek = any('\u0370' <= c <= '\u03FF' for c in r['name'])
+    key = (norm_full(r["name"]), r["birth_year"])
+    if has_greek and key not in preferred_names:
+        preferred_names[key] = r['name']
+
+# Replace Latin names with their Greek equivalent where available
+for r in all_results:
+    has_greek = any('\u0370' <= c <= '\u03FF' for c in r['name'])
+    if not has_greek:
+        key = (norm_full(r["name"]), r["birth_year"])
+        if key in preferred_names:
+            r['name'] = preferred_names[key]
+
+# =========================
 # SEASON BEST
 # =========================
 season_best = {}
@@ -425,7 +496,7 @@ for r in all_results:
     except ValueError:
         continue
 
-    key = (r["name"], r["birth_year"])
+    key = (norm_full(r["name"]), r["birth_year"])
 
     if key not in season_best:
         season_best[key] = r
