@@ -751,50 +751,6 @@ filename = os.path.join(
     f"2026_U18_100m_GR_{timestamp}.xlsx"
 )
 
-# =========================
-# EXCEL
-# =========================
-wb = Workbook()
-
-ws1 = wb.active
-ws1.title = "All_Performances"
-
-ws1.append([
-    "Rank", "Name", "Birth Year", "Club", "Performance",
-    "Wind", "Competition", "Date", "Location", "Heat", "Lane", "Notes"
-])
-
-sorted_all = sorted(
-    all_results,
-    key=lambda x: perf_float(x["performance"])
-)
-
-for i, r in enumerate(sorted_all, 1):
-    ws1.append([
-        i,
-        r["name"],
-        r["birth_year"],
-        r["club"].upper(),
-        r["performance"],
-        r["wind"],
-        r["competition"].upper(),
-        r["date"],
-        r["location"].upper(),
-        r["heat"],
-        r["lane"],
-        ""
-    ])
-
-ws2 = wb.create_sheet("Season_Best")
-ws2.append(["Rank", "Name", "Birth Year", "Club", "Best Performance", "Wind", "Competition", "Date", "Location", "Heat", "Lane", "Notes"])
-for i, r in enumerate(ranking, 1):
-    ws2.append([i, r["name"], r["birth_year"], r["club"].upper(), r["performance"], r["wind"], r["competition"].upper(), r["date"], r["location"].upper(), r["heat"], r["lane"], ""])
-
-# =========================
-# SEGAS-style sheet
-# =========================
-ws3 = wb.create_sheet("Καλύτερες_Επιδόσεις")
-
 def fmt_wind(w):
     w = w.strip()
     if w.upper() == "NWI":
@@ -802,9 +758,27 @@ def fmt_wind(w):
     return w.lstrip("+")
 
 def fmt_comp(r):
-    comp = r["competition"].upper()
-    return comp
+    return r["competition"].upper()
 
+G = ["Α/Α","ΟΝΟΜΑΤΕΠΩΝΥΜΟ","ΓΕΝΝΗΣΗ","ΣΩΜΑΤΕΙΟ","ΕΠΙΔΟΣΗ","ΑΝΕΜΟΣ","ΑΓΩΝΑΣ","ΗΜ/ΝΙΑ","ΤΟΠΟΘΕΣΙΑ","ΣΕΙΡΑ","ΔΙΑΔΡΟΜΟΣ","ΣΗΜΕΙΩΣΕΙΣ"]
+
+wb = Workbook()
+
+ws1 = wb.active
+ws1.title = "All_Performances"
+ws1.append(G)
+
+sorted_all = sorted(all_results, key=lambda x: perf_float(x["performance"]))
+for i, r in enumerate(sorted_all, 1):
+    ws1.append([i, r["name"], r["birth_year"], r["club"].upper(), r["performance"], fmt_wind(r["wind"]), fmt_comp(r), r["date"], r["location"].upper(), r["heat"], r["lane"], ""])
+
+ws2 = wb.create_sheet("Season_Best")
+ws2.append(["100 Μ ΚΟΡΑΣΙΔΩΝ (Κ18) 2026"])
+ws2.append(G)
+for i, r in enumerate(ranking, 1):
+    ws2.append([i, r["name"], r["birth_year"], r["club"].upper(), r["performance"], fmt_wind(r["wind"]), fmt_comp(r), r["date"], r["location"].upper(), r["heat"], r["lane"], ""])
+
+ws3 = wb.create_sheet("Καλύτερες_Επιδόσεις")
 ws3.append(["100 Μ ΚΟΡΑΣΙΔΩΝ (Κ18) 2026"])
 ws3.append(["Α/Α", "ΕΠΙΔΟΣΗ", "ΑΝΕΜΟΣ", "ΟΝΟΜΑΤΕΠΩΝΥΜΟ", "ΓΕΝΝΗΣΗ", "ΣΩΜΑΤΕΙΟ", "ΑΓΩΝΑΣ", "ΗΜ/ΝΙΑ"])
 
@@ -813,7 +787,7 @@ for i, r in enumerate(wind_legal_ranking, 1):
 
 if wind_aided_ranking:
     ws3.append([])
-    ws3.append(["ΜΕ ΑΝΕΜΟ", "", "", "", "", "", "", ""])
+    ws3.append(["ΜΕ ΑΝΕΜΟ"] + [""] * 7)
     for i, r in enumerate(wind_aided_ranking, 1):
         ws3.append([i, r["performance"], fmt_wind(r["wind"]), r["name"], r["birth_year"], r["club"].upper(), fmt_comp(r), r["date"]])
 
