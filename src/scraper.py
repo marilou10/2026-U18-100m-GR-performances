@@ -173,8 +173,15 @@ if urls_to_scrape:
             text = cell.text.split("\n")[0].strip()
             if "DNS" in text or "DNF" in text:
                 continue
-            if PERFORMANCE_RE.search(text):
-                perf = text.replace("SB", "").replace("PB", "").strip()
+            m = PERFORMANCE_RE.search(text)
+            if m:
+                perf = m.group(0)
+                # Re-append trailing suffix chars (w, h) from original text
+                rest = text[m.end():]
+                for suffix in ("w", "h"):
+                    if suffix in rest:
+                        perf += suffix
+                        break
                 return perf, idx
         return None, None
 
@@ -504,6 +511,20 @@ for r in all_results:
 for r in all_results:
     if not r.get("club", "").strip() and r["name"] in club_lookup:
         r["club"] = list(club_lookup[r["name"]])[0]
+
+# Clean malformed performances (e.g. "13.65 (.641)" -> "13.65")
+PERF_CLEAN_RE = re.compile(r"(\d+\.\d+)")
+for r in all_results:
+    p = r["performance"]
+    if "(" in p or ")" in p:
+        m = PERF_CLEAN_RE.search(p)
+        if m:
+            clean = m.group(1)
+            if "w" in p:
+                clean += "w"
+            if "h" in p:
+                clean += "h"
+            r["performance"] = clean
 
 if urls_to_scrape:
     # =========================
