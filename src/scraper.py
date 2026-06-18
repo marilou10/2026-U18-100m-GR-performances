@@ -715,6 +715,29 @@ wind_legal_ranking = sorted(
 )
 
 # =========================
+# WIND-AIDED ONLY (athletes with no wind-legal performances at all)
+# =========================
+wind_aided_only = {}
+for r in all_results:
+    if is_wind_legal(r):
+        continue
+    try:
+        perf = perf_float(r["performance"])
+    except ValueError:
+        continue
+    key = (norm_full(r["name"]), r["birth_year"])
+    # Only include if athlete has NO wind-legal entry
+    if key in wind_legal_best:
+        continue
+    if key not in wind_aided_only or perf < perf_float(wind_aided_only[key]["performance"]):
+        wind_aided_only[key] = r
+
+wind_aided_ranking = sorted(
+    wind_aided_only.values(),
+    key=lambda x: perf_float(x["performance"])
+)
+
+# =========================
 # OUTPUT FILE
 # =========================
 base_dir = os.path.dirname(os.path.abspath(__file__))
@@ -763,50 +786,36 @@ for i, r in enumerate(sorted_all, 1):
     ])
 
 ws2 = wb.create_sheet("Season_Best")
-
-ws2.append([
-    "Rank", "Name", "Birth Year", "Club", "Best Performance",
-    "Wind", "Competition", "Date", "Location", "Heat", "Lane", "Notes"
-])
-
+ws2.append(["Rank", "Name", "Birth Year", "Club", "Best Performance", "Wind", "Competition", "Date", "Location", "Heat", "Lane", "Notes"])
 for i, r in enumerate(ranking, 1):
-    ws2.append([
-        i,
-        r["name"],
-        r["birth_year"],
-        r["club"].upper(),
-        r["performance"],
-        r["wind"],
-        r["competition"].upper(),
-        r["date"],
-        r["location"].upper(),
-        r["heat"],
-        r["lane"],
-        ""
-    ])
+    ws2.append([i, r["name"], r["birth_year"], r["club"].upper(), r["performance"], r["wind"], r["competition"].upper(), r["date"], r["location"].upper(), r["heat"], r["lane"], ""])
 
-ws3 = wb.create_sheet("Wind_Legal_Best")
+# =========================
+# SEGAS-style sheet
+# =========================
+ws3 = wb.create_sheet("Καλύτερες_Επιδόσεις")
 
-ws3.append([
-    "Rank", "Name", "Birth Year", "Club", "Best Performance",
-    "Wind", "Competition", "Date", "Location", "Heat", "Lane", "Notes"
-])
+def fmt_wind(w):
+    w = w.strip()
+    if w.upper() == "NWI":
+        return ""
+    return w.lstrip("+")
+
+def fmt_comp(r):
+    comp = r["competition"].upper()
+    return comp
+
+ws3.append(["100 Μ ΚΟΡΑΣΙΔΩΝ (Κ18) 2026"])
+ws3.append(["Α/Α", "ΕΠΙΔΟΣΗ", "ΑΝΕΜΟΣ", "ΟΝΟΜΑΤΕΠΩΝΥΜΟ", "ΓΕΝΝΗΣΗ", "ΣΩΜΑΤΕΙΟ", "ΑΓΩΝΑΣ", "ΗΜ/ΝΙΑ"])
 
 for i, r in enumerate(wind_legal_ranking, 1):
-    ws3.append([
-        i,
-        r["name"],
-        r["birth_year"],
-        r["club"].upper(),
-        r["performance"],
-        r["wind"],
-        r["competition"].upper(),
-        r["date"],
-        r["location"].upper(),
-        r["heat"],
-        r["lane"],
-        ""
-    ])
+    ws3.append([i, r["performance"], fmt_wind(r["wind"]), r["name"], r["birth_year"], r["club"].upper(), fmt_comp(r), r["date"]])
+
+if wind_aided_ranking:
+    ws3.append([])
+    ws3.append(["ΜΕ ΑΝΕΜΟ", "", "", "", "", "", "", ""])
+    for i, r in enumerate(wind_aided_ranking, 1):
+        ws3.append([i, r["performance"], fmt_wind(r["wind"]), r["name"], r["birth_year"], r["club"].upper(), fmt_comp(r), r["date"]])
 
 wb.save(filename)
 
