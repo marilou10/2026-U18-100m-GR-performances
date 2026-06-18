@@ -485,6 +485,72 @@ for r in all_results:
         if key in preferred_names:
             r['name'] = preferred_names[key]
 
+# Second pass: surname-only fallback for single-match cases (e.g. "Georgia Rafailia KANLI")
+surname_greek = {}
+for r in all_results:
+    has_greek = any('\u0370' <= c <= '\u03FF' for c in r['name'])
+    if has_greek:
+        key = (nk_latin(r['name']), r['birth_year'])
+        if key not in surname_greek:
+            surname_greek[key] = set()
+        surname_greek[key].add(r['name'])
+
+for r in all_results:
+    has_greek = any('\u0370' <= c <= '\u03FF' for c in r['name'])
+    if not has_greek:
+        key = (nk_latin(r['name']), r['birth_year'])
+        if key in surname_greek and len(surname_greek[key]) == 1:
+            r['name'] = list(surname_greek[key])[0]
+
+# Third pass: Latin->Greek reverse transliteration for still-unmatched Greek names
+LATIN_TO_GREEK_DIGRAPHS = [
+    ("CH", "Χ"), ("TH", "Θ"), ("PS", "Ψ"), ("OU", "ΟΥ"),
+    ("MP", "ΜΠ"), ("NT", "ΝΤ"), ("GK", "ΓΚ"), ("NG", "ΓΓ"),
+    ("TS", "ΤΣ"), ("TZ", "ΤΖ"), ("AI", "ΑΙ"), ("EI", "ΕΙ"),
+    ("OI", "ΟΙ"), ("AY", "ΑΥ"), ("EY", "ΕΥ"),
+    ("AV", "ΑΥ"), ("EV", "ΕΥ"),  # V as second in diphthong -> Υ not Β
+]
+LATIN_TO_GREEK_SINGLE = {
+    'A': 'Α', 'B': 'Β', 'C': 'Σ', 'D': 'Δ', 'E': 'Ε',
+    'F': 'Φ', 'G': 'Γ', 'I': 'Ι', 'K': 'Κ', 'L': 'Λ',
+    'M': 'Μ', 'N': 'Ν', 'O': 'Ο', 'P': 'Π', 'R': 'Ρ',
+    'S': 'Σ', 'T': 'Τ', 'U': 'ΟΥ', 'V': 'Β', 'X': 'Ξ',
+    'Y': 'Υ', 'Z': 'Ζ',
+}
+
+def latin_to_greek(name):
+    result = []
+    i = 0
+    upper = name.upper()
+    while i < len(upper):
+        matched = False
+        for digraph, greek in LATIN_TO_GREEK_DIGRAPHS:
+            if upper[i:i+len(digraph)] == digraph:
+                result.append(greek)
+                i += len(digraph)
+                matched = True
+                break
+        if matched:
+            continue
+        ch = upper[i]
+        result.append(LATIN_TO_GREEK_SINGLE.get(ch, ch))
+        i += 1
+    out = "".join(result)
+    # Common Greek surname ending correction: -ΚΙ -> -ΚΗ
+    parts = out.split()
+    if parts and len(parts[-1]) > 2 and parts[-1].endswith("ΚΙ"):
+        parts[-1] = parts[-1][:-1] + "Η"
+        out = " ".join(parts)
+    return out
+
+for r in all_results:
+    has_greek = any('\u0370' <= c <= '\u03FF' for c in r['name'])
+    if not has_greek:
+        greek_attempt = latin_to_greek(r['name'])
+        # Only use if all characters successfully mapped (no leftover ASCII letters)
+        if not any('A' <= c <= 'Z' for c in greek_attempt.upper()):
+            r['name'] = greek_attempt
+
 # =========================
 # SEASON BEST
 # =========================
