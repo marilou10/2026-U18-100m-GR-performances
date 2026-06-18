@@ -98,13 +98,14 @@ if urls_to_scrape:
 
     def find_performance_cell(row):
         cells = row.find_elements(By.TAG_NAME, "td")
-        for cell in cells:
+        for idx, cell in enumerate(cells):
             text = cell.text.split("\n")[0].strip()
             if "DNS" in text or "DNF" in text:
                 continue
             if PERFORMANCE_RE.search(text):
-                return text.replace("SB", "").replace("PB", "").strip()
-        return None
+                perf = text.replace("SB", "").replace("PB", "").strip()
+                return perf, idx
+        return None, None
 
     def worker(urls_batch, worker_id):
         driver = webdriver.Chrome(
@@ -305,11 +306,13 @@ if urls_to_scrape:
                                     except ValueError:
                                         continue
 
-                                    club = cells[3].text.strip()
-                                    performance = find_performance_cell(row)
+                                    performance, perf_idx = find_performance_cell(row)
 
                                     if not performance:
                                         continue
+
+                                    all_cells = row.find_elements(By.TAG_NAME, "td")
+                                    club = all_cells[perf_idx - 1].text.strip() if perf_idx and perf_idx > 0 else ""
 
                                     if 2009 <= birth_year <= 2012:
                                         local_results.append({
