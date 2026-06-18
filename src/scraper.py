@@ -489,6 +489,14 @@ if urls_to_scrape:
 
     all_results = list(unique.values())
 
+# =========================
+# CLEAN COMPETITION NAMES & LOCATIONS
+# =========================
+for r in all_results:
+    r["competition"] = re.sub(r'^Roster Athletics\s*·\s*', '', r["competition"]).strip()
+    r["location"] = re.sub(r'^\d+\s*', '', r["location"]).strip()
+
+if urls_to_scrape:
     # =========================
     # SAVE CACHE
     # =========================
@@ -501,7 +509,6 @@ if urls_to_scrape:
     print("[OK] Cache saved successfully")
 else:
     print("All links already scraped. Using cached data.")
-    # Re-save cache so cleanup filters (non-100m entries) persist on disk
     print(f"Saving {len(all_results)} performances to cache...")
     with open(CACHE_FILE, 'w', encoding='utf-8') as f:
         json.dump({
@@ -509,13 +516,6 @@ else:
             "scraped_urls": list(scraped_urls)
         }, f, ensure_ascii=False, indent=2)
     print("[OK] Cache saved successfully")
-
-
-# =========================
-# CLEAN COMPETITION NAMES
-# =========================
-for r in all_results:
-    r["competition"] = re.sub(r'^Roster Athletics\s*·\s*', '', r["competition"]).strip()
 
 # =========================
 # NORMALIZE NAMES TO GREEK
