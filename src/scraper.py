@@ -846,6 +846,12 @@ for r in all_results:
     if r.get("club", "").strip() in PLACEHOLDER_CLUBS:
         r["club"] = ""
 
+# Clean up placeholder lane values
+for r in all_results:
+    lane = r.get("lane", "").strip()
+    if lane in ("", "-", "--"):
+        r["lane"] = ""
+
 # =========================
 # OUTPUT FILE
 # =========================
