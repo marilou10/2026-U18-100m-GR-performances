@@ -853,6 +853,25 @@ for r in all_results:
         r["lane"] = ""
 
 # =========================
+# LOAD NOTES
+# =========================
+NOTES_FILE = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+    "cache_notes.json"
+)
+_notes_data = {}
+if os.path.exists(NOTES_FILE):
+    try:
+        with open(NOTES_FILE, 'r', encoding='utf-8') as f:
+            _notes_data = json.load(f)
+    except (json.JSONDecodeError, IOError):
+        _notes_data = {}
+
+def fmt_note(r):
+    k = f"{norm_full(r['name'])}|{r.get('birth_year','')}|{r.get('date','')}"
+    return _notes_data.get(k, "")
+
+# =========================
 # OUTPUT FILE
 # =========================
 base_dir = os.path.dirname(os.path.abspath(__file__))
@@ -893,26 +912,26 @@ ws1.append(G)
 
 sorted_all = sorted(all_results, key=lambda x: perf_float(x["performance"]))
 for i, r in enumerate(sorted_all, 1):
-    ws1.append([i, r["name"], r["birth_year"], r["club"], r["performance"], fmt_wind(r["wind"]), fmt_comp(r), r["date"], fmt_loc(r), r["heat"], r["lane"], ""])
+    ws1.append([i, r["name"], r["birth_year"], r["club"], r["performance"], fmt_wind(r["wind"]), fmt_comp(r), r["date"], fmt_loc(r), r["heat"], r["lane"], fmt_note(r)])
 
 ws2 = wb.create_sheet("Season_Best")
 ws2.append(["100 Μ ΚΟΡΑΣΙΔΩΝ (Κ18) 2026"])
 ws2.append(G)
 for i, r in enumerate(ranking, 1):
-    ws2.append([i, r["name"], r["birth_year"], r["club"], r["performance"], fmt_wind(r["wind"]), fmt_comp(r), r["date"], fmt_loc(r), r["heat"], r["lane"], ""])
+    ws2.append([i, r["name"], r["birth_year"], r["club"], r["performance"], fmt_wind(r["wind"]), fmt_comp(r), r["date"], fmt_loc(r), r["heat"], r["lane"], fmt_note(r)])
 
 ws3 = wb.create_sheet("Καλύτερες_Επιδόσεις")
 ws3.append(["100 Μ ΚΟΡΑΣΙΔΩΝ (Κ18) 2026"])
 ws3.append(G)
 
 for i, r in enumerate(wind_legal_ranking, 1):
-        ws3.append([i, r["name"], r["birth_year"], r["club"], r["performance"], fmt_wind(r["wind"]), fmt_comp(r), r["date"], fmt_loc(r), r["heat"], r["lane"], ""])
+        ws3.append([i, r["name"], r["birth_year"], r["club"], r["performance"], fmt_wind(r["wind"]), fmt_comp(r), r["date"], fmt_loc(r), r["heat"], r["lane"], fmt_note(r)])
 
 if wind_aided_ranking:
     ws3.append([])
     ws3.append(["ΜΕ ΑΝΕΜΟ"] + [""] * 11)
     for i, r in enumerate(wind_aided_ranking, 1):
-        ws3.append([i, r["name"], r["birth_year"], r["club"], r["performance"], fmt_wind(r["wind"]), fmt_comp(r), r["date"], fmt_loc(r), r["heat"], r["lane"], ""])
+        ws3.append([i, r["name"], r["birth_year"], r["club"], r["performance"], fmt_wind(r["wind"]), fmt_comp(r), r["date"], fmt_loc(r), r["heat"], r["lane"], fmt_note(r)])
 
 wb.save(filename)
 
@@ -952,7 +971,8 @@ if _HAS_PDF:
     col_w.append(max(pdf.get_string_width(fmt_loc(r)) for r in all_pdf_rows) + 2)
     col_w.append(max(pdf.get_string_width(rget(r, "heat")) for r in all_pdf_rows) + 2)
     col_w.append(max(pdf.get_string_width(rget(r, "lane")) for r in all_pdf_rows) + 2)
-    col_w.append(8)
+    col_w.append(max(pdf.get_string_width(fmt_note(r)) for r in all_pdf_rows) + 2)
+    col_w[11] = max(col_w[11], 8)  # minimum 8mm
 
     pdf.set_font("DejaVu", "B", 7)
     for ci, h in enumerate(headers):
@@ -974,7 +994,7 @@ if _HAS_PDF:
         vals = [
             str(i), r["name"], str(r["birth_year"]), r["club"],
             r["performance"], fmt_wind(r["wind"]), fmt_comp(r), r["date"],
-            fmt_loc(r), rget(r, "heat"), rget(r, "lane"), ""
+            fmt_loc(r), rget(r, "heat"), rget(r, "lane"), fmt_note(r)
         ]
         for ci, v in enumerate(vals):
             pdf.cell(col_w[ci], 4, v, border=1, align="C" if ci == 0 else "L")
