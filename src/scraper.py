@@ -16,6 +16,7 @@ from selenium.webdriver.common.action_chains import ActionChains
 from webdriver_manager.chrome import ChromeDriverManager
 
 from openpyxl import Workbook
+from openpyxl.styles import PatternFill
 from datetime import datetime
 
 try:
@@ -30,6 +31,7 @@ import sys
 import subprocess
 import re
 import unicodedata
+import csv
 
 
 LINKS_FILE = os.path.join(
@@ -497,18 +499,22 @@ if urls_to_scrape:
     all_results.extend(all_new_results)
     scraped_urls.update(all_succeeded)
 
-    # Remove duplicates
-    unique = {}
-    for r in all_results:
-        key = (
-            r["name"],
-            r["birth_year"],
-            r["competition"],
-            r["performance"]
-        )
-        unique[key] = r
+    print(f"Scraped {len(all_new_results)} new performances\n")
 
-    all_results = list(unique.values())
+# Remove duplicates (always, even after cache load)
+unique = {}
+for r in all_results:
+    key = (
+        r["name"],
+        r["birth_year"],
+        r["competition"],
+        r["performance"]
+    )
+    unique[key] = r
+
+if len(all_results) != len(unique):
+    print(f"  Dedup: {len(all_results)} -> {len(unique)} entries")
+all_results = list(unique.values())
 
 # =========================
 # CLEAN COMPETITION NAMES & LOCATIONS
@@ -617,26 +623,16 @@ all_results = [r for r in all_results if r.get("club", "").strip() not in NON_GR
 if len(all_results) < before:
     print(f"[OK] Removed {before - len(all_results)} entries by non-Greek club athletes")
 
-if urls_to_scrape:
-    # =========================
-    # SAVE CACHE
-    # =========================
-    print(f"\nSaving {len(all_results)} performances to cache...")
-    with open(CACHE_FILE, 'w', encoding='utf-8') as f:
-        json.dump({
-            "performances": all_results,
-            "scraped_urls": sorted(scraped_urls)
-        }, f, ensure_ascii=False, indent=2)
-    print("[OK] Cache saved successfully")
-else:
-    print("All links already scraped. Using cached data.")
-    print(f"Saving {len(all_results)} performances to cache...")
-    with open(CACHE_FILE, 'w', encoding='utf-8') as f:
-        json.dump({
-            "performances": all_results,
-            "scraped_urls": sorted(scraped_urls)
-        }, f, ensure_ascii=False, indent=2)
-    print("[OK] Cache saved successfully")
+# =========================
+# SAVE CACHE
+# =========================
+print(f"\nSaving {len(all_results)} performances to cache...")
+with open(CACHE_FILE, 'w', encoding='utf-8') as f:
+    json.dump({
+        "performances": all_results,
+        "scraped_urls": sorted(scraped_urls)
+    }, f, ensure_ascii=False, indent=2)
+print("[OK] Cache saved successfully")
 
 # =========================
 # NORMALIZE NAMES TO GREEK
@@ -948,7 +944,31 @@ ws2.append([COPYRIGHT] + [""] * 11)
 ws3.append([])
 ws3.append([COPYRIGHT] + [""] * 11)
 
+# =========================
+# EXCEL COLORING (highlight wind-aided rows) — must be before wb.save()
+# =========================
+WIND_FILL = PatternFill(start_color="FFFCE4", end_color="FFFCE4", fill_type="solid")
+for ws in [ws1, ws2, ws3]:
+    for row in ws.iter_rows(min_row=2, max_row=ws.max_row):
+        perf_cell = row[4]
+        if perf_cell.value and isinstance(perf_cell.value, str) and "w" in perf_cell.value:
+            for cell in row:
+                cell.fill = WIND_FILL
+
 wb.save(filename)
+
+# =========================
+# CSV EXPORT
+# =========================
+csv_filename = filename.replace(".xlsx", ".csv")
+with open(csv_filename, 'w', encoding='utf-8', newline='') as f:
+    w = csv.writer(f)
+    w.writerow(G)
+    for r in sorted(all_results, key=lambda x: perf_float(x["performance"])):
+        w.writerow([r["name"], r["birth_year"], r["club"], r["performance"],
+                    fmt_wind(r["wind"]), fmt_comp(r), r["date"], fmt_loc(r),
+                    r["heat"], r["lane"], fmt_note(r)])
+print(f"CSV file: {csv_filename}")
 
 # =========================
 # PDF EXPORT
@@ -964,8 +984,28 @@ if _HAS_PDF:
     pdf = PDF(orientation="L", unit="mm", format="A3")
     pdf.set_left_margin(5)
 
-    pdf.add_font("DejaVu", "", r"C:\Windows\Fonts\DejaVuSans.ttf")
-    pdf.add_font("DejaVu", "B", r"C:\Windows\Fonts\DejaVuSans-Bold.ttf")
+    # Find DejaVu font: check bundled (src/) then common system paths
+    _FONT_DIRS = [
+        os.path.dirname(os.path.abspath(__file__)),
+        "/usr/share/fonts/truetype/dejavu",
+        "/usr/local/share/fonts/dejavu",
+        os.path.expanduser("~/.fonts"),
+    ]
+    if sys.platform == "win32":
+        _FONT_DIRS.insert(0, r"C:\Windows\Fonts")
+    _TTF = None
+    _TTF_B = None
+    for d in _FONT_DIRS:
+        r = os.path.join(d, "DejaVuSans.ttf")
+        b = os.path.join(d, "DejaVuSans-Bold.ttf")
+        if os.path.exists(r) and os.path.exists(b):
+            _TTF, _TTF_B = r, b
+            break
+    if _TTF is None:
+        print("[WARN] DejaVuSans.ttf not found — PDF may not render correctly")
+    else:
+        pdf.add_font("DejaVu", "", _TTF)
+        pdf.add_font("DejaVu", "B", _TTF_B)
 
     headers = ["Α/Α", "ΟΝΟΜΑΤΕΠΩΝΥΜΟ", "ΓΕΝ.", "ΣΩΜΑΤΕΙΟ", "ΕΠΙΔ.", "ΑΝΕΜ.", "ΑΓΩΝΑΣ", "ΗΜ/ΝΙΑ", "ΤΟΠΟΘΕΣΙΑ", "ΣΕΙΡΑ", "ΔΙΑΔ.", "ΣΗΜ."]
     all_pdf_rows = wind_legal_ranking + wind_aided_ranking
@@ -1050,6 +1090,21 @@ print(f"Excel file: {filename}")
 print(f"Total performances: {len(all_results)}")
 print(f"Season best athletes: {len(ranking)}")
 print(f"Wind-legal best athletes: {len(wind_legal_ranking)}")
+
+# Stats
+clubs = {}
+ages = {}
+for r in all_results:
+    c = r.get("club", "").strip()
+    if c:
+        clubs[c] = clubs.get(c, 0) + 1
+    by = r.get("birth_year", "")
+    if by:
+        ages[str(by)] = ages.get(str(by), 0) + 1
+top_clubs = sorted(clubs.items(), key=lambda x: -x[1])[:10]
+print(f"\nTop clubs: {', '.join(f'{c} ({n})' for c, n in top_clubs)}")
+age_dist = sorted(ages.items())
+print(f"Age dist: {', '.join(f'{y}: {n}' for y, n in age_dist)}")
 
 def _open(fpath):
     if sys.platform == "win32":

@@ -219,3 +219,6 @@ __marimo__/
 
 # LibreOffice/Excel lock files
 .~lock.*
+
+# Generated output files
+src/output/

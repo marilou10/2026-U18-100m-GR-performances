@@ -230,6 +230,55 @@ def cmd_remove(key):
     else:
         print(f"No note found for key: {key}")
 
+def cmd_filter(args):
+    import argparse as _a
+    p = _a.ArgumentParser(prog="add_note.py filter", add_help=False)
+    p.add_argument("--club")
+    p.add_argument("--name")
+    p.add_argument("--min-perf", type=float)
+    p.add_argument("--max-perf", type=float)
+    p.add_argument("--wind-aided", action="store_true")
+    p.add_argument("--legal", action="store_true")
+    try:
+        opts = p.parse_args(args)
+    except:
+        print(p.format_help())
+        return
+    entries = load_entries()
+    notes = load_notes()
+    matches = []
+    for i, e in enumerate(entries):
+        p_raw = e.get("performance", "")
+        try:
+            p_val = float(p_raw.replace("w","").replace("h",""))
+        except:
+            continue
+        if opts.min_perf is not None and p_val < opts.min_perf:
+            continue
+        if opts.max_perf is not None and p_val > opts.max_perf:
+            continue
+        if opts.club and opts.club.lower() not in e.get("club","").lower():
+            continue
+        if opts.name and opts.name.lower() not in e.get("name","").lower():
+            continue
+        is_windy = "w" in p_raw
+        if opts.wind_aided and not is_windy:
+            continue
+        if opts.legal and is_windy:
+            continue
+        matches.append((i, e))
+    matches.sort(key=lambda x: perf_float(x[1].get("performance", "99")))
+    print(f"Found {len(matches)} matching entries:\n")
+    for idx, (i, e) in enumerate(matches[:30]):
+        print(f"  {idx}. {format_entry(i, e, notes)}")
+    if len(matches) > 30:
+        print(f"\n... and {len(matches) - 30} more")
+    # Print key hint for first one
+    if matches:
+        k = entry_key(matches[0][1])
+        print(f"\nFirst entry key: {k}")
+        print(f'  Use: python src/add_note.py add "{k}" "your note"')
+
 def main():
     if len(sys.argv) == 1:
         interactive_main()
@@ -243,14 +292,21 @@ def main():
         cmd_add(sys.argv[2], " ".join(sys.argv[3:]))
     elif sys.argv[1] == "remove" and len(sys.argv) > 2:
         cmd_remove(sys.argv[2])
-    else:
-        print(__doc__)
+    elif sys.argv[1] == "filter":
+        cmd_filter(sys.argv[2:])
 
 HELP_TEXT = """
   search <term>   - search entries by name/date/club
   list            - show all saved notes
   add <key> <txt> - add note (get key from search)
   remove <key>    - remove note
+  filter [opts]   - show entries matching criteria
+    --club CLUB       club name (partial match)
+    --min-perf TIME   minimum time (e.g. 12.0)
+    --max-perf TIME   maximum time
+    --name NAME       athlete name (partial match)
+    --wind-aided      only wind-aided performances
+    --legal           only wind-legal performances
 
   Or just run with no arguments for the interactive menu.
 """
