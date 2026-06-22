@@ -313,18 +313,6 @@
       "lane": "4"
     },
     {
-      "name": "Θεοδωρα ΓΚΡΙΤΖΑΛΗ",
-      "birth_year": 2012,
-      "club": "ΑΠΟΕΛ",
-      "performance": "17.16w",
-      "wind": "+4.4",
-      "competition": "ΔΙΑΣΥΛΛΟΓΙΚΟ ΠΡΩΤΑΘΛΗΜΑ ΑΝΔΡΩΝ - ΓΥΝΑΙΚΩΝ Κ18 - 8ος ΟΜΙΛΟΣ",
-      "date": "18/04/2026",
-      "location": "ΤΡΙΠΟΛΗ, Greece",
-      "heat": "Τελικός C",
-      "lane": "3"
-    },
-    {
       "name": "ΚΑΤΕΡΙΝΑ ΓΕΩΡΓΟΠΟΥΛΟΥ",
       "birth_year": 2010,
       "club": "ΓΑΣ ΕΥΡΩΤΑ",
@@ -359,18 +347,6 @@
       "location": "ΤΡΙΠΟΛΗ, Greece",
       "heat": "Τελικός D",
       "lane": "3"
-    },
-    {
-      "name": "ΑΝΔΡΙΑΝΑ ΜΠΟΥΤΕΡΑΚΟΥ",
-      "birth_year": 2012,
-      "club": "ΑΠΟΕΛ",
-      "performance": "14.51w",
-      "wind": "+2.7",
-      "competition": "ΔΙΑΣΥΛΛΟΓΙΚΟ ΠΡΩΤΑΘΛΗΜΑ ΑΝΔΡΩΝ - ΓΥΝΑΙΚΩΝ Κ18 - 8ος ΟΜΙΛΟΣ",
-      "date": "18/04/2026",
-      "location": "ΤΡΙΠΟΛΗ, Greece",
-      "heat": "Τελικός D",
-      "lane": "4"
     },
     {
       "name": "ΙΩΑΝΝΑ ΑΝΔΡΙΑΝΑΚΗ",
@@ -421,18 +397,6 @@
       "lane": "5"
     },
     {
-      "name": "ΝΙΚΟΛΕΤΑ ΜΠΑΤΣΑΚΗ",
-      "birth_year": 2012,
-      "club": "ΑΠΟΕΛ",
-      "performance": "13.45",
-      "wind": "+1.9",
-      "competition": "ΔΙΑΣΥΛΛΟΓΙΚΟ ΠΡΩΤΑΘΛΗΜΑ ΑΝΔΡΩΝ - ΓΥΝΑΙΚΩΝ Κ18 - 8ος ΟΜΙΛΟΣ",
-      "date": "18/04/2026",
-      "location": "ΤΡΙΠΟΛΗ, Greece",
-      "heat": "Τελικός E",
-      "lane": "6"
-    },
-    {
       "name": "ΑΔΑΜΑΝΤΙΑ ΜΑΣΤΟΡΑΚΗ",
       "birth_year": 2011,
       "club": "ΣΔΥ ΑΡΓΟΛΙΔΑΣ",
@@ -455,18 +419,6 @@
       "location": "ΤΡΙΠΟΛΗ, Greece",
       "heat": "Τελικός E",
       "lane": "3"
-    },
-    {
-      "name": "ΑΠΟΣΤΟΛΙΑ ΜΑΡΙΝ ΑΛΕΞΙΟΥ",
-      "birth_year": 2009,
-      "club": "ΑΠΟΕΛ",
-      "performance": "14.58",
-      "wind": "+1.9",
-      "competition": "ΔΙΑΣΥΛΛΟΓΙΚΟ ΠΡΩΤΑΘΛΗΜΑ ΑΝΔΡΩΝ - ΓΥΝΑΙΚΩΝ Κ18 - 8ος ΟΜΙΛΟΣ",
-      "date": "18/04/2026",
-      "location": "ΤΡΙΠΟΛΗ, Greece",
-      "heat": "Τελικός E",
-      "lane": "1"
     },
     {
       "name": "ΜΑΡΙΝΑ ΠΑΠΑΓΕΩΡΓΙΟΥ",
@@ -647,18 +599,6 @@
       "location": "ΤΡΙΠΟΛΗ, Greece",
       "heat": "Τελικός G",
       "lane": "4"
-    },
-    {
-      "name": "Αισελα ΝΤΑΡΔΑ",
-      "birth_year": 2012,
-      "club": "ΑΠΟΕΛ",
-      "performance": "16.14w",
-      "wind": "+2.7",
-      "competition": "ΔΙΑΣΥΛΛΟΓΙΚΟ ΠΡΩΤΑΘΛΗΜΑ ΑΝΔΡΩΝ - ΓΥΝΑΙΚΩΝ Κ18 - 8ος ΟΜΙΛΟΣ",
-      "date": "18/04/2026",
-      "location": "ΤΡΙΠΟΛΗ, Greece",
-      "heat": "Τελικός G",
-      "lane": "1"
     },
     {
       "name": "ΑΝΤΩΝΙΑ ΓΛΟΥ",
@@ -4213,30 +4153,6 @@
       "lane": "2"
     },
     {
-      "name": "Elena SIMEONOVA",
-      "birth_year": 2011,
-      "club": "KLASA",
-      "performance": "13.74",
-      "wind": "+0.8",
-      "competition": "ΑΓΩΝΕΣ ΣΤΙΒΟΥ ΕΛΛΗΝΟΒΟΥΛΓΑΡΙΚΗΣ ΦΙΛΙΑΣ",
-      "date": "19/04/2026",
-      "location": "ΑΛΕΞΑΝΔΡΕΙΑ, Greece",
-      "heat": "Τελικός A",
-      "lane": "4"
-    },
-    {
-      "name": "Natali NEDEVA",
-      "birth_year": 2011,
-      "club": "SKLA Atlet - Mezdra",
-      "performance": "14.02",
-      "wind": "+0.8",
-      "competition": "ΑΓΩΝΕΣ ΣΤΙΒΟΥ ΕΛΛΗΝΟΒΟΥΛΓΑΡΙΚΗΣ ΦΙΛΙΑΣ",
-      "date": "19/04/2026",
-      "location": "ΑΛΕΞΑΝΔΡΕΙΑ, Greece",
-      "heat": "Τελικός A",
-      "lane": "7"
-    },
-    {
       "name": "ΚΥΡΙΑΚΗ ΙΩΣΗΦΙΔΟΥ",
       "birth_year": 2011,
       "club": "ΓΣ ΛΑΓΚΑΔΑ",
@@ -4261,18 +4177,6 @@
       "lane": "6"
     },
     {
-      "name": "Mihaela LUKANOVA",
-      "birth_year": 2012,
-      "club": "ASC \"Lokomotiv - Ruse\"",
-      "performance": "13.85",
-      "wind": "-0.7",
-      "competition": "ΑΓΩΝΕΣ ΣΤΙΒΟΥ ΕΛΛΗΝΟΒΟΥΛΓΑΡΙΚΗΣ ΦΙΛΙΑΣ",
-      "date": "19/04/2026",
-      "location": "ΑΛΕΞΑΝΔΡΕΙΑ, Greece",
-      "heat": "Τελικός B",
-      "lane": "4"
-    },
-    {
       "name": "ΒΑΡΒΑΡΑ ΓΚΙΟΥΖΕΛΗ",
       "birth_year": 2012,
       "club": "ΑΠΣ ΠΥΓΜΗ",
@@ -4283,30 +4187,6 @@
       "location": "ΑΛΕΞΑΝΔΡΕΙΑ, Greece",
       "heat": "Τελικός B",
       "lane": "2"
-    },
-    {
-      "name": "Karina NIKOLOVA",
-      "birth_year": 2011,
-      "club": "Priority Sport",
-      "performance": "14.01",
-      "wind": "-0.7",
-      "competition": "ΑΓΩΝΕΣ ΣΤΙΒΟΥ ΕΛΛΗΝΟΒΟΥΛΓΑΡΙΚΗΣ ΦΙΛΙΑΣ",
-      "date": "19/04/2026",
-      "location": "ΑΛΕΞΑΝΔΡΕΙΑ, Greece",
-      "heat": "Τελικός B",
-      "lane": "5"
-    },
-    {
-      "name": "Joana DIMOVA",
-      "birth_year": 2012,
-      "club": "Priority Sport",
-      "performance": "14.39",
-      "wind": "-0.7",
-      "competition": "ΑΓΩΝΕΣ ΣΤΙΒΟΥ ΕΛΛΗΝΟΒΟΥΛΓΑΡΙΚΗΣ ΦΙΛΙΑΣ",
-      "date": "19/04/2026",
-      "location": "ΑΛΕΞΑΝΔΡΕΙΑ, Greece",
-      "heat": "Τελικός B",
-      "lane": "3"
     },
     {
       "name": "ΝΙΚΟΛΕΤΑ ΜΑΛΔΟΝΑΛΔΟ",
@@ -5471,18 +5351,6 @@
       "location": "Αθήνα, Νέα Σμύρνη, Greece",
       "heat": "Τελικός A",
       "lane": "5"
-    },
-    {
-      "name": "Klara DAHLGREN",
-      "birth_year": 2010,
-      "club": "Sundsvalls FI",
-      "performance": "12.98",
-      "wind": "-1.2",
-      "competition": "Πανιώνιοι Αγώνες, Panionian Games 2026",
-      "date": "15/05/2026",
-      "location": "Αθήνα, Νέα Σμύρνη, Greece",
-      "heat": "Τελικός A",
-      "lane": "4"
     },
     {
       "name": "ΑΝΑΣΤΑΣΙΑ ΚΑΣΚΟΥΤΑ",
@@ -12683,18 +12551,6 @@
       "location": "ΑΡΓΟΣ ΟΡΕΣΤΙΚΟ, Greece",
       "heat": "Τελικός",
       "lane": "3"
-    },
-    {
-      "name": "ΑΝΤΡΕΑΝΑ ΧΡΙΣΤΟΔΟΥΛΟΥ",
-      "birth_year": 2009,
-      "club": "ΛΥΚΕΙΟ ΒΕΡΓΙΝΑΣ - ΚΥΠΡΟΣ",
-      "performance": "12.31w",
-      "wind": "+2.8",
-      "competition": "67οι Πανελλήνιοι Σχολικοί Αγώνες Μαθητών-Μαθητριών ΓΕΛ-ΕΠΑΛ Ελλάδας-Κύπρου σχ. έτους 2025-2026",
-      "date": "05/05/2026",
-      "location": "ΑΡΓΟΣ ΟΡΕΣΤΙΚΟ, Greece",
-      "heat": "Τελικός",
-      "lane": "7"
     },
     {
       "name": "ΓΕΩΡΓΙΑ ΜΑΡΙΑ ΙΩΑΝΝΟΥ ΜΠΙΝΟΥΣΗ",

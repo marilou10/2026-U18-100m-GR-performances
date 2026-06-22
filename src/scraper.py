@@ -579,6 +579,21 @@ OVERRIDE_EXCLUDE = {
 }
 all_results = [r for r in all_results if r["name"] not in OVERRIDE_EXCLUDE]
 
+# Non-Greek clubs (athletes from Cyprus, Bulgaria, etc.)
+NON_GREEK_CLUBS = {
+    "ΑΠΟΕΛ",
+    "ΛΥΚΕΙΟ ΒΕΡΓΙΝΑΣ - ΚΥΠΡΟΣ",
+    "KLASA",
+    "SKLA Atlet - Mezdra",
+    'ASC "Lokomotiv - Ruse"',
+    "Priority Sport",
+    "Sundsvalls FI",
+}
+before = len(all_results)
+all_results = [r for r in all_results if r.get("club", "").strip() not in NON_GREEK_CLUBS]
+if len(all_results) < before:
+    print(f"[OK] Removed {before - len(all_results)} entries by non-Greek club athletes")
+
 if urls_to_scrape:
     # =========================
     # SAVE CACHE
