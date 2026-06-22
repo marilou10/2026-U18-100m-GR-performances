@@ -548,15 +548,31 @@ for r in all_results:
         r["location"] = LOCATION_GR[loc_up]
 
 # Backfill missing clubs from other entries of the same athlete (cross-script)
+# Treat "Greece" placeholder club as missing
+PLACEHOLDER_CLUBS = {"GREECE", "Greece"}
+def _club_key(n):
+    """Standard + alternative V↔Y key for cross-script matching (e.g. V↔Y from Y)."""
+    k = norm_full(n)
+    return k, k.replace("V", "Y").replace("B", "Y")
+
 club_lookup = {}
 for r in all_results:
-    if r.get("club", "").strip():
-        club_lookup.setdefault(norm_full(r["name"]), set()).add(r["club"].strip())
+    c = r.get("club", "").strip()
+    if c and c not in PLACEHOLDER_CLUBS:
+        k1, k2 = _club_key(r["name"])
+        club_lookup.setdefault(k1, set()).add(c)
+        club_lookup.setdefault(k2, set()).add(c)
 for r in all_results:
-    if not r.get("club", "").strip():
-        key = norm_full(r["name"])
-        if key in club_lookup:
-            r["club"] = list(club_lookup[key])[0]
+    c = r.get("club", "").strip()
+    if not c or c in PLACEHOLDER_CLUBS:
+        k1, k2 = _club_key(r["name"])
+        for k in (k1, k2):
+            if k in club_lookup:
+                r["club"] = list(club_lookup[k])[0]
+                break
+    # Clear remaining placeholders
+    if r.get("club", "").strip() in PLACEHOLDER_CLUBS:
+        r["club"] = ""
 
 # Clean malformed performances (e.g. "13.65 (.641)" -> "13.65")
 PERF_CLEAN_RE = re.compile(r"(\d+\.\d+)")
@@ -725,6 +741,18 @@ removed = before - len(all_results)
 if removed:
     print(f"[OK] Removed {removed} entries by non-Greek athletes")
 
+# Manual club fixups for athletes where backfill failed (transliteration mismatch)
+# Match on normalized surname + first-name initial to catch spelling variants
+MANUAL_CLUB = {
+    "KANLI": "ΓΑΣ ΜΗΘΥΜΝΑΣ ΟΛΥΜΠΙΑΣ ΛΕΣ",
+}
+for r in all_results:
+    if r.get("club", "").strip():
+        continue
+    sur = nk_latin(r["name"])
+    if sur in MANUAL_CLUB:
+        r["club"] = MANUAL_CLUB[sur]
+
 # =========================
 # SEASON BEST
 # =========================
@@ -804,6 +832,21 @@ wind_aided_ranking = sorted(
 )
 
 # =========================
+# UPPERCASE ALL TEXT FIELDS FOR OUTPUT
+# =========================
+TEXT_FIELDS = ["name", "club", "competition", "location", "date", "heat", "lane"]
+for r in all_results:
+    for k in TEXT_FIELDS:
+        v = r.get(k)
+        if v and isinstance(v, str):
+            r[k] = v.upper()
+
+# Clear any remaining placeholder clubs after uppercase
+for r in all_results:
+    if r.get("club", "").strip() in PLACEHOLDER_CLUBS:
+        r["club"] = ""
+
+# =========================
 # OUTPUT FILE
 # =========================
 base_dir = os.path.dirname(os.path.abspath(__file__))
@@ -826,10 +869,10 @@ def fmt_wind(w):
     return w.lstrip("+")
 
 def fmt_comp(r):
-    return r["competition"].upper()
+    return r["competition"]
 
 def fmt_loc(r):
-    loc = r["location"].upper()
+    loc = r["location"]
     if loc.endswith(", GREECE"):
         loc = loc[:-8]
     return loc
@@ -844,26 +887,26 @@ ws1.append(G)
 
 sorted_all = sorted(all_results, key=lambda x: perf_float(x["performance"]))
 for i, r in enumerate(sorted_all, 1):
-    ws1.append([i, r["name"], r["birth_year"], r["club"].upper(), r["performance"], fmt_wind(r["wind"]), fmt_comp(r), r["date"], fmt_loc(r), r["heat"], r["lane"], ""])
+    ws1.append([i, r["name"], r["birth_year"], r["club"], r["performance"], fmt_wind(r["wind"]), fmt_comp(r), r["date"], fmt_loc(r), r["heat"], r["lane"], ""])
 
 ws2 = wb.create_sheet("Season_Best")
 ws2.append(["100 Μ ΚΟΡΑΣΙΔΩΝ (Κ18) 2026"])
 ws2.append(G)
 for i, r in enumerate(ranking, 1):
-    ws2.append([i, r["name"], r["birth_year"], r["club"].upper(), r["performance"], fmt_wind(r["wind"]), fmt_comp(r), r["date"], fmt_loc(r), r["heat"], r["lane"], ""])
+    ws2.append([i, r["name"], r["birth_year"], r["club"], r["performance"], fmt_wind(r["wind"]), fmt_comp(r), r["date"], fmt_loc(r), r["heat"], r["lane"], ""])
 
 ws3 = wb.create_sheet("Καλύτερες_Επιδόσεις")
 ws3.append(["100 Μ ΚΟΡΑΣΙΔΩΝ (Κ18) 2026"])
 ws3.append(G)
 
 for i, r in enumerate(wind_legal_ranking, 1):
-        ws3.append([i, r["name"], r["birth_year"], r["club"].upper(), r["performance"], fmt_wind(r["wind"]), fmt_comp(r), r["date"], fmt_loc(r), r["heat"], r["lane"], ""])
+        ws3.append([i, r["name"], r["birth_year"], r["club"], r["performance"], fmt_wind(r["wind"]), fmt_comp(r), r["date"], fmt_loc(r), r["heat"], r["lane"], ""])
 
 if wind_aided_ranking:
     ws3.append([])
     ws3.append(["ΜΕ ΑΝΕΜΟ"] + [""] * 11)
     for i, r in enumerate(wind_aided_ranking, 1):
-        ws3.append([i, r["name"], r["birth_year"], r["club"].upper(), r["performance"], fmt_wind(r["wind"]), fmt_comp(r), r["date"], fmt_loc(r), r["heat"], r["lane"], ""])
+        ws3.append([i, r["name"], r["birth_year"], r["club"], r["performance"], fmt_wind(r["wind"]), fmt_comp(r), r["date"], fmt_loc(r), r["heat"], r["lane"], ""])
 
 wb.save(filename)
 
@@ -895,7 +938,7 @@ if _HAS_PDF:
     col_w.append(max(pdf.get_string_width(str(i)) for i in range(1, total + 1)) + 2)
     col_w.append(max(pdf.get_string_width(r["name"]) for r in all_pdf_rows) + 2)
     col_w.append(max(pdf.get_string_width(str(r["birth_year"])) for r in all_pdf_rows) + 2)
-    col_w.append(max(pdf.get_string_width(r["club"].upper()) for r in all_pdf_rows) + 2)
+    col_w.append(max(pdf.get_string_width(r["club"]) for r in all_pdf_rows) + 2)
     col_w.append(max(pdf.get_string_width(r["performance"]) for r in all_pdf_rows) + 2)
     col_w.append(max(pdf.get_string_width(fmt_wind(r["wind"])) for r in all_pdf_rows) + 2)
     col_w.append(max(pdf.get_string_width(fmt_comp(r)) for r in all_pdf_rows) + 2)
@@ -923,7 +966,7 @@ if _HAS_PDF:
         style = "B" if bold else ""
         pdf.set_font("DejaVu", style, 6)
         vals = [
-            str(i), r["name"], str(r["birth_year"]), r["club"].upper(),
+            str(i), r["name"], str(r["birth_year"]), r["club"],
             r["performance"], fmt_wind(r["wind"]), fmt_comp(r), r["date"],
             fmt_loc(r), rget(r, "heat"), rget(r, "lane"), ""
         ]
