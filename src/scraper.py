@@ -810,8 +810,9 @@ if _HAS_PDF:
 
     class PDF(FPDF):
         pass
+    pdf = PDF(orientation="L", unit="mm", format="A3")
+    pdf.set_left_margin(5)
 
-    pdf = PDF(orientation="L", unit="mm", format="A4")
     pdf.add_font("DejaVu", "", r"C:\Windows\Fonts\DejaVuSans.ttf")
     pdf.add_font("DejaVu", "B", r"C:\Windows\Fonts\DejaVuSans-Bold.ttf")
 
