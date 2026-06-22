@@ -869,9 +869,14 @@ print(f"Total performances: {len(all_results)}")
 print(f"Season best athletes: {len(ranking)}")
 print(f"Wind-legal best athletes: {len(wind_legal_ranking)}")
 
-if sys.platform == "win32":
-    os.startfile(filename)
-elif sys.platform == "darwin":
-    subprocess.run(["open", filename])
-else:
-    subprocess.run(["xdg-open", filename])
+def _open(fpath):
+    if sys.platform == "win32":
+        os.startfile(fpath)
+    elif sys.platform == "darwin":
+        subprocess.run(["open", fpath])
+    else:
+        subprocess.run(["xdg-open", fpath])
+
+_open(filename)
+if _HAS_PDF:
+    _open(pdf_filename)
