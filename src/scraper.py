@@ -940,7 +940,7 @@ if wind_aided_ranking:
     for i, r in enumerate(wind_aided_ranking, 1):
         ws3.append([i, r["name"], r["birth_year"], r["club"], r["performance"], fmt_wind(r["wind"]), fmt_comp(r), r["date"], fmt_loc(r), r["heat"], r["lane"], fmt_note(r)])
 
-COPYRIGHT = "Copyright (c) 2026 Μαρία Ελένη Αντωνοπούλου — Licensed under MIT"
+COPYRIGHT = f"Copyright (c) {datetime.now().year} Μαρία Ελένη Αντωνοπούλου — Licensed under MIT"
 ws1.append([])
 ws1.append([COPYRIGHT] + [""] * 11)
 ws2.append([])
