@@ -9,8 +9,13 @@ from selenium.webdriver.common.action_chains import ActionChains
 from webdriver_manager.chrome import ChromeDriverManager
 
 from openpyxl import Workbook
-from fpdf import FPDF
 from datetime import datetime
+
+try:
+    from fpdf import FPDF
+    _HAS_PDF = True
+except ImportError:
+    _HAS_PDF = False
 import os
 import json
 import time
@@ -798,64 +803,64 @@ wb.save(filename)
 # =========================
 # PDF EXPORT
 # =========================
-pdf_filename = filename.replace(".xlsx", ".pdf")
+if _HAS_PDF:
+    pdf_filename = filename.replace(".xlsx", ".pdf")
 
-class PDF(FPDF):
-    pass
+    class PDF(FPDF):
+        pass
 
-pdf = PDF(orientation="L", unit="mm", format="A4")
-pdf.add_font("DejaVu", "", r"C:\Windows\Fonts\DejaVuSans.ttf")
-pdf.add_font("DejaVu", "B", r"C:\Windows\Fonts\DejaVuSans-Bold.ttf")
+    pdf = PDF(orientation="L", unit="mm", format="A4")
+    pdf.add_font("DejaVu", "", r"C:\Windows\Fonts\DejaVuSans.ttf")
+    pdf.add_font("DejaVu", "B", r"C:\Windows\Fonts\DejaVuSans-Bold.ttf")
 
-col_w = [8, 48, 10, 32, 12, 15, 85, 15, 45, 20, 20, 20]
-headers = ["Α/Α", "ΟΝΟΜΑΤΕΠΩΝΥΜΟ", "ΓΕΝ.", "ΣΩΜΑΤΕΙΟ", "ΕΠΙΔ.", "ΑΝΕΜ.", "ΑΓΩΝΑΣ", "ΗΜ/ΝΙΑ", "ΤΟΠΟΘΕΣΙΑ", "ΣΕΙΡΑ", "ΔΙΑΔ.", "ΣΗΜ."]
+    col_w = [8, 48, 10, 32, 12, 15, 85, 15, 45, 20, 20, 20]
+    headers = ["Α/Α", "ΟΝΟΜΑΤΕΠΩΝΥΜΟ", "ΓΕΝ.", "ΣΩΜΑΤΕΙΟ", "ΕΠΙΔ.", "ΑΝΕΜ.", "ΑΓΩΝΑΣ", "ΗΜ/ΝΙΑ", "ΤΟΠΟΘΕΣΙΑ", "ΣΕΙΡΑ", "ΔΙΑΔ.", "ΣΗΜ."]
 
-def pdf_header():
-    pdf.set_font("DejaVu", "B", 9)
-    pdf.cell(0, 5, "100 Μ ΚΟΡΑΣΙΔΩΝ (Κ18) 2026", new_x="LMARGIN", new_y="NEXT")
-    pdf.set_font("DejaVu", "B", 7)
-    for i, h in enumerate(headers):
-        pdf.cell(col_w[i], 5, h, border=1, align="C")
-    pdf.ln()
+    def pdf_header():
+        pdf.set_font("DejaVu", "B", 9)
+        pdf.cell(0, 5, "100 Μ ΚΟΡΑΣΙΔΩΝ (Κ18) 2026", new_x="LMARGIN", new_y="NEXT")
+        pdf.set_font("DejaVu", "B", 7)
+        for i, h in enumerate(headers):
+            pdf.cell(col_w[i], 5, h, border=1, align="C")
+        pdf.ln()
 
-def pdf_row(i, r, bold=False):
-    style = "B" if bold else ""
-    pdf.set_font("DejaVu", style, 6)
-    vals = [
-        str(i), r["name"], str(r["birth_year"])[-2:], r["club"].upper(),
-        r["performance"], fmt_wind(r["wind"]), fmt_comp(r), r["date"],
-        r["location"].upper(), r["heat"], r["lane"], ""
-    ]
-    for ci, v in enumerate(vals):
-        pdf.cell(col_w[ci], 4, v, border=1, align="C" if ci == 0 else "L")
-    pdf.ln()
+    def pdf_row(i, r, bold=False):
+        style = "B" if bold else ""
+        pdf.set_font("DejaVu", style, 6)
+        vals = [
+            str(i), r["name"], str(r["birth_year"])[-2:], r["club"].upper(),
+            r["performance"], fmt_wind(r["wind"]), fmt_comp(r), r["date"],
+            r["location"].upper(), r["heat"], r["lane"], ""
+        ]
+        for ci, v in enumerate(vals):
+            pdf.cell(col_w[ci], 4, v, border=1, align="C" if ci == 0 else "L")
+        pdf.ln()
 
-pdf.set_auto_page_break(auto=True, margin=10)
-pdf.add_page()
-pdf_header()
+    pdf.set_auto_page_break(auto=True, margin=10)
+    pdf.add_page()
+    pdf_header()
 
-for i, r in enumerate(wind_legal_ranking, 1):
-    if pdf.y > 270:
-        pdf.add_page()
-        pdf_header()
-    pdf_row(i, r)
-
-if wind_aided_ranking:
-    if pdf.y > 260:
-        pdf.add_page()
-        pdf_header()
-    pdf.set_font("DejaVu", "B", 7)
-    pdf.cell(sum(col_w), 5, "ΜΕ ΑΝΕΜΟ", border=1, align="C")
-    pdf.ln()
-    for i, r in enumerate(wind_aided_ranking, 1):
+    for i, r in enumerate(wind_legal_ranking, 1):
         if pdf.y > 270:
             pdf.add_page()
             pdf_header()
         pdf_row(i, r)
 
-pdf.output(pdf_filename)
+    if wind_aided_ranking:
+        if pdf.y > 260:
+            pdf.add_page()
+            pdf_header()
+        pdf.set_font("DejaVu", "B", 7)
+        pdf.cell(sum(col_w), 5, "ΜΕ ΑΝΕΜΟ", border=1, align="C")
+        pdf.ln()
+        for i, r in enumerate(wind_aided_ranking, 1):
+            if pdf.y > 270:
+                pdf.add_page()
+                pdf_header()
+            pdf_row(i, r)
 
-print(f"PDF file: {pdf_filename}")
+    pdf.output(pdf_filename)
+    print(f"PDF file: {pdf_filename}")
 print("\n" + "="*50)
 print("DONE")
 print("="*50)
