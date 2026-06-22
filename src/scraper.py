@@ -22,6 +22,7 @@ import time
 import sys
 import subprocess
 import re
+import unicodedata
 
 
 LINKS_FILE = os.path.join(
@@ -509,9 +510,20 @@ for r in all_results:
     r["competition"] = re.sub(r'^Roster Athletics\s*·\s*', '', r["competition"]).strip()
     r["location"] = re.sub(r'^\d+\s*', '', r["location"]).strip()
     r["location"] = re.sub(r', ([^,]+), \1$', r', \1', r["location"])
-    m = re.search(r'& (.+?) \(.*?(?:ΔΡ[ΟΌ]ΜΟΙ|[ΑΆ]ΛΜΑΤ[Α]|[ΑΆ]ΛΜΑΤΟΣ).*?\), (.+)', r["location"])
+    m = re.search(r'& (.+?) \(.*?(?:ΔΡ[ΟΌ]ΜΟΙ|[ΑΆ]ΛΜΑΤΑ).*?\), (.+)', r["location"], re.IGNORECASE)
     if m:
         r["location"] = m.group(1).strip() + ", " + m.group(2).strip()
+    # Strip embedded location from competition name
+    loc_city = r["location"].split(",")[0].strip()
+    if loc_city:
+        comp = r["competition"]
+        def _no_tonos(s):
+            return ''.join(c for c in unicodedata.normalize('NFD', s) if unicodedata.category(c) != 'Mn').upper()
+        comp_flat = _no_tonos(comp)
+        city_flat = _no_tonos(loc_city)
+        idx = comp.find(",")
+        if idx >= 0 and city_flat in comp_flat[idx:idx+50]:
+            r["competition"] = comp[:idx].strip()
 
 # Backfill missing clubs from other entries of the same athlete (cross-script)
 club_lookup = {}
@@ -772,6 +784,12 @@ def fmt_wind(w):
 def fmt_comp(r):
     return r["competition"].upper()
 
+def fmt_loc(r):
+    loc = r["location"].upper()
+    if loc.endswith(", GREECE"):
+        loc = loc[:-8]
+    return loc
+
 G = ["Α/Α","ΟΝΟΜΑΤΕΠΩΝΥΜΟ","ΓΕΝΝΗΣΗ","ΣΩΜΑΤΕΙΟ","ΕΠΙΔΟΣΗ","ΑΝΕΜΟΣ","ΑΓΩΝΑΣ","ΗΜ/ΝΙΑ","ΤΟΠΟΘΕΣΙΑ","ΣΕΙΡΑ","ΔΙΑΔΡΟΜΟΣ","ΣΗΜΕΙΩΣΕΙΣ"]
 
 wb = Workbook()
@@ -782,26 +800,26 @@ ws1.append(G)
 
 sorted_all = sorted(all_results, key=lambda x: perf_float(x["performance"]))
 for i, r in enumerate(sorted_all, 1):
-    ws1.append([i, r["name"], r["birth_year"], r["club"].upper(), r["performance"], fmt_wind(r["wind"]), fmt_comp(r), r["date"], r["location"].upper(), r["heat"], r["lane"], ""])
+    ws1.append([i, r["name"], r["birth_year"], r["club"].upper(), r["performance"], fmt_wind(r["wind"]), fmt_comp(r), r["date"], fmt_loc(r), r["heat"], r["lane"], ""])
 
 ws2 = wb.create_sheet("Season_Best")
 ws2.append(["100 Μ ΚΟΡΑΣΙΔΩΝ (Κ18) 2026"])
 ws2.append(G)
 for i, r in enumerate(ranking, 1):
-    ws2.append([i, r["name"], r["birth_year"], r["club"].upper(), r["performance"], fmt_wind(r["wind"]), fmt_comp(r), r["date"], r["location"].upper(), r["heat"], r["lane"], ""])
+    ws2.append([i, r["name"], r["birth_year"], r["club"].upper(), r["performance"], fmt_wind(r["wind"]), fmt_comp(r), r["date"], fmt_loc(r), r["heat"], r["lane"], ""])
 
 ws3 = wb.create_sheet("Καλύτερες_Επιδόσεις")
 ws3.append(["100 Μ ΚΟΡΑΣΙΔΩΝ (Κ18) 2026"])
 ws3.append(G)
 
 for i, r in enumerate(wind_legal_ranking, 1):
-    ws3.append([i, r["name"], r["birth_year"], r["club"].upper(), r["performance"], fmt_wind(r["wind"]), fmt_comp(r), r["date"], r["location"].upper(), r["heat"], r["lane"], ""])
+        ws3.append([i, r["name"], r["birth_year"], r["club"].upper(), r["performance"], fmt_wind(r["wind"]), fmt_comp(r), r["date"], fmt_loc(r), r["heat"], r["lane"], ""])
 
 if wind_aided_ranking:
     ws3.append([])
     ws3.append(["ΜΕ ΑΝΕΜΟ"] + [""] * 11)
     for i, r in enumerate(wind_aided_ranking, 1):
-        ws3.append([i, r["name"], r["birth_year"], r["club"].upper(), r["performance"], fmt_wind(r["wind"]), fmt_comp(r), r["date"], r["location"].upper(), r["heat"], r["lane"], ""])
+        ws3.append([i, r["name"], r["birth_year"], r["club"].upper(), r["performance"], fmt_wind(r["wind"]), fmt_comp(r), r["date"], fmt_loc(r), r["heat"], r["lane"], ""])
 
 wb.save(filename)
 
@@ -819,15 +837,42 @@ if _HAS_PDF:
     pdf.add_font("DejaVu", "", r"C:\Windows\Fonts\DejaVuSans.ttf")
     pdf.add_font("DejaVu", "B", r"C:\Windows\Fonts\DejaVuSans-Bold.ttf")
 
-    col_w = [8, 42, 12, 45, 12, 13, 180, 16, 42, 15, 12, 8]
     headers = ["Α/Α", "ΟΝΟΜΑΤΕΠΩΝΥΜΟ", "ΓΕΝ.", "ΣΩΜΑΤΕΙΟ", "ΕΠΙΔ.", "ΑΝΕΜ.", "ΑΓΩΝΑΣ", "ΗΜ/ΝΙΑ", "ΤΟΠΟΘΕΣΙΑ", "ΣΕΙΡΑ", "ΔΙΑΔ.", "ΣΗΜ."]
+    all_pdf_rows = wind_legal_ranking + wind_aided_ranking
+    total = len(all_pdf_rows)
+    total_aided = len(wind_aided_ranking)
+
+    def rget(r, k):
+        v = r.get(k)
+        return str(v) if v is not None else ""
+
+    pdf.set_font("DejaVu", "", 6)
+    col_w = []
+    col_w.append(max(pdf.get_string_width(str(i)) for i in range(1, total + 1)) + 2)
+    col_w.append(max(pdf.get_string_width(r["name"]) for r in all_pdf_rows) + 2)
+    col_w.append(max(pdf.get_string_width(str(r["birth_year"])) for r in all_pdf_rows) + 2)
+    col_w.append(max(pdf.get_string_width(r["club"].upper()) for r in all_pdf_rows) + 2)
+    col_w.append(max(pdf.get_string_width(r["performance"]) for r in all_pdf_rows) + 2)
+    col_w.append(max(pdf.get_string_width(fmt_wind(r["wind"])) for r in all_pdf_rows) + 2)
+    col_w.append(max(pdf.get_string_width(fmt_comp(r)) for r in all_pdf_rows) + 2)
+    col_w.append(max(pdf.get_string_width(r["date"]) for r in all_pdf_rows) + 2)
+    col_w.append(max(pdf.get_string_width(fmt_loc(r)) for r in all_pdf_rows) + 2)
+    col_w.append(max(pdf.get_string_width(rget(r, "heat")) for r in all_pdf_rows) + 2)
+    col_w.append(max(pdf.get_string_width(rget(r, "lane")) for r in all_pdf_rows) + 2)
+    col_w.append(8)
+
+    pdf.set_font("DejaVu", "B", 7)
+    for ci, h in enumerate(headers):
+        hw = pdf.get_string_width(h) + 2
+        if hw > col_w[ci]:
+            col_w[ci] = hw
 
     def pdf_header():
         pdf.set_font("DejaVu", "B", 9)
         pdf.cell(0, 5, "100 Μ ΚΟΡΑΣΙΔΩΝ (Κ18) 2026", new_x="LMARGIN", new_y="NEXT")
         pdf.set_font("DejaVu", "B", 7)
-        for i, h in enumerate(headers):
-            pdf.cell(col_w[i], 5, h, border=1, align="C")
+        for ci, h in enumerate(headers):
+            pdf.cell(col_w[ci], 5, h, border=1, align="C")
         pdf.ln()
 
     def pdf_row(i, r, bold=False):
@@ -836,7 +881,7 @@ if _HAS_PDF:
         vals = [
             str(i), r["name"], str(r["birth_year"]), r["club"].upper(),
             r["performance"], fmt_wind(r["wind"]), fmt_comp(r), r["date"],
-            r["location"].upper(), r["heat"], r["lane"], ""
+            fmt_loc(r), rget(r, "heat"), rget(r, "lane"), ""
         ]
         for ci, v in enumerate(vals):
             pdf.cell(col_w[ci], 4, v, border=1, align="C" if ci == 0 else "L")
