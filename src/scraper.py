@@ -525,6 +525,28 @@ for r in all_results:
         if idx >= 0 and city_flat in comp_flat[idx:idx+50]:
             r["competition"] = comp[:idx].strip()
 
+# =========================
+# TRANSLATE LATIN LOCATIONS TO GREEK
+# =========================
+LOCATION_GR = {
+    "ALEXANDRIA": "ΑΛΕΞΑΝΔΡΕΙΑ",
+    "ARGOSTOLI, KEFALONIA": "ΑΡΓΟΣΤΟΛΙ, ΚΕΦΑΛΟΝΙΑ",
+    "ATHENS": "ΑΘΗΝΑ",
+    "NAXOS KAI MIKRES KYKLADES": "ΝΑΞΟΣ ΚΑΙ ΜΙΚΡΕΣ ΚΥΚΛΑΔΕΣ",
+    "TRIKALA": "ΤΡΙΚΑΛΑ",
+    "VARI ATHINA": "ΒΑΡΗ ΑΘΗΝΑ",
+    "VARI ATHINA, GREECE": "ΒΑΡΗ ΑΘΗΝΑ",
+    "ALEXANDRIA, GREECE": "ΑΛΕΞΑΝΔΡΕΙΑ",
+    "ARGOSTOLI, KEFALONIA, GREECE": "ΑΡΓΟΣΤΟΛΙ, ΚΕΦΑΛΟΝΙΑ",
+    "ATHENS, GREECE": "ΑΘΗΝΑ",
+    "NAXOS KAI MIKRES KYKLADES, GREECE": "ΝΑΞΟΣ ΚΑΙ ΜΙΚΡΕΣ ΚΥΚΛΑΔΕΣ",
+    "TRIKALA, GREECE": "ΤΡΙΚΑΛΑ",
+}
+for r in all_results:
+    loc_up = r["location"].upper()
+    if loc_up in LOCATION_GR:
+        r["location"] = LOCATION_GR[loc_up]
+
 # Backfill missing clubs from other entries of the same athlete (cross-script)
 club_lookup = {}
 for r in all_results:
