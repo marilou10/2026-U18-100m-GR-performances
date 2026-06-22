@@ -572,6 +572,13 @@ for r in all_results:
                 clean += "h"
             r["performance"] = clean
 
+# Known over-age athletes mistakenly included (Roster birth year incorrect)
+OVERRIDE_EXCLUDE = {
+    "ΚΑΛΛΙΟΠΙ ΠΑΥΛΑΚΑΚΗ",  # born 2002, not U18
+    "Kalliopi PAVLAKAKI",   # born 2002, not U18
+}
+all_results = [r for r in all_results if r["name"] not in OVERRIDE_EXCLUDE]
+
 if urls_to_scrape:
     # =========================
     # SAVE CACHE
