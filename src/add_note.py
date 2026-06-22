@@ -1,4 +1,4 @@
-# Copyright (c) 2026 marilou10
+# Copyright (c) 2026 Μαρια Ελένη Αντωνοπούλου
 # Licensed under the MIT License. See LICENSE file.
 #
 # Notes manager for 2026 U18 100m Greek performances.
