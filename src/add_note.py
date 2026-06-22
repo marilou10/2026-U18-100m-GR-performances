@@ -1,3 +1,8 @@
+# Copyright (c) 2026 marilou10
+# Licensed under the MIT License. See LICENSE file.
+#
+# Notes manager for 2026 U18 100m Greek performances.
+
 """
 Manage notes on performance entries.
 Notes are stored in cache_notes.json and populate the ΣΗΜΕΙΩΣΕΙΣ column.

@@ -1,3 +1,10 @@
+# Copyright (c) 2026 marilou10
+# Licensed under the MIT License. See LICENSE file.
+#
+# 2026 U18 100m Greek performances — scraper & Excel/PDF generator.
+# Scrapes Roster Athletics links, normalizes names/clubs, produces
+# All_Performances / Season_Best / Καλύτερες_Επιδόσεις sheets.
+
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
@@ -933,6 +940,14 @@ if wind_aided_ranking:
     for i, r in enumerate(wind_aided_ranking, 1):
         ws3.append([i, r["name"], r["birth_year"], r["club"], r["performance"], fmt_wind(r["wind"]), fmt_comp(r), r["date"], fmt_loc(r), r["heat"], r["lane"], fmt_note(r)])
 
+COPYRIGHT = "Copyright (c) 2026 marilou10 — Licensed under MIT"
+ws1.append([])
+ws1.append([COPYRIGHT] + [""] * 11)
+ws2.append([])
+ws2.append([COPYRIGHT] + [""] * 11)
+ws3.append([])
+ws3.append([COPYRIGHT] + [""] * 11)
+
 wb.save(filename)
 
 # =========================
@@ -942,7 +957,10 @@ if _HAS_PDF:
     pdf_filename = filename.replace(".xlsx", ".pdf")
 
     class PDF(FPDF):
-        pass
+        def footer(self):
+            self.set_y(-10)
+            self.set_font("DejaVu", "", 5)
+            self.cell(0, 5, COPYRIGHT, align="C")
     pdf = PDF(orientation="L", unit="mm", format="A3")
     pdf.set_left_margin(5)
 
