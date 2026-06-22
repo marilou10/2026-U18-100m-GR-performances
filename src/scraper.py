@@ -815,7 +815,7 @@ if _HAS_PDF:
     pdf.add_font("DejaVu", "", r"C:\Windows\Fonts\DejaVuSans.ttf")
     pdf.add_font("DejaVu", "B", r"C:\Windows\Fonts\DejaVuSans-Bold.ttf")
 
-    col_w = [8, 48, 13, 32, 12, 15, 85, 15, 45, 20, 20, 20]
+    col_w = [7, 36, 10, 24, 10, 10, 90, 13, 36, 12, 10, 7]
     headers = ["Α/Α", "ΟΝΟΜΑΤΕΠΩΝΥΜΟ", "ΓΕΝ.", "ΣΩΜΑΤΕΙΟ", "ΕΠΙΔ.", "ΑΝΕΜ.", "ΑΓΩΝΑΣ", "ΗΜ/ΝΙΑ", "ΤΟΠΟΘΕΣΙΑ", "ΣΕΙΡΑ", "ΔΙΑΔ.", "ΣΗΜ."]
 
     def pdf_header():
