@@ -781,16 +781,16 @@ for i, r in enumerate(ranking, 1):
 
 ws3 = wb.create_sheet("Καλύτερες_Επιδόσεις")
 ws3.append(["100 Μ ΚΟΡΑΣΙΔΩΝ (Κ18) 2026"])
-ws3.append(["Α/Α", "ΕΠΙΔΟΣΗ", "ΑΝΕΜΟΣ", "ΟΝΟΜΑΤΕΠΩΝΥΜΟ", "ΓΕΝΝΗΣΗ", "ΣΩΜΑΤΕΙΟ", "ΑΓΩΝΑΣ", "ΗΜ/ΝΙΑ"])
+ws3.append(G)
 
 for i, r in enumerate(wind_legal_ranking, 1):
-    ws3.append([i, r["performance"], fmt_wind(r["wind"]), r["name"], r["birth_year"], r["club"].upper(), fmt_comp(r), r["date"]])
+    ws3.append([i, r["name"], r["birth_year"], r["club"].upper(), r["performance"], fmt_wind(r["wind"]), fmt_comp(r), r["date"], r["location"].upper(), r["heat"], r["lane"], ""])
 
 if wind_aided_ranking:
     ws3.append([])
-    ws3.append(["ΜΕ ΑΝΕΜΟ"] + [""] * 7)
+    ws3.append(["ΜΕ ΑΝΕΜΟ"] + [""] * 11)
     for i, r in enumerate(wind_aided_ranking, 1):
-        ws3.append([i, r["performance"], fmt_wind(r["wind"]), r["name"], r["birth_year"], r["club"].upper(), fmt_comp(r), r["date"]])
+        ws3.append([i, r["name"], r["birth_year"], r["club"].upper(), r["performance"], fmt_wind(r["wind"]), fmt_comp(r), r["date"], r["location"].upper(), r["heat"], r["lane"], ""])
 
 wb.save(filename)
 
