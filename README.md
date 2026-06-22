@@ -50,8 +50,15 @@ Notes appear in the **ΣΗΜΕΙΩΣΕΙΣ** column of all three export formats.
 | `meet_links.txt` | Roster Athletics meet URLs to scrape |
 | `cache_performances.json` | Cached scraped data |
 | `cache_notes.json` | User notes (populated via `add_note.py`) |
-| `src/scraper.py` | Core scraper & export engine |
+| `src/scraper.py` | Orchestrator: loads cache, scrapes, coordinates pipeline |
 | `src/add_note.py` | Notes CLI & interactive manager |
+| `src/config.py` | Constants, paths, lookup tables |
+| `src/normalizer.py` | Greek↔Latin transliteration, name/club cleaning |
+| `src/exporter.py` | Excel/PDF/CSV generation |
+
+## Data Disclaimer
+
+All athlete performance data in this project is sourced from **Roster Athletics** (https://www.rosterathletics.com), which aggregates results from official competitions. I do not claim ownership of any results, names, or meet data. This project is an independent tool for organizing and presenting publicly available information. For official data, refer to the Hellenic Athletics Federation (SEGAS) or World Athletics.
 
 ## License
 MIT — Copyright (c) 2026 Μαρία Ελένη Αντωνοπούλου

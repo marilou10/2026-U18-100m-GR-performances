@@ -2,6 +2,8 @@
 # Licensed under the MIT License. See LICENSE file.
 #
 # 2026 U18 100m Greek performances — scraper & orchestrator.
+# Data sourced from Roster Athletics (https://www.rosterathletics.com).
+# I do not own or claim ownership of any athlete data, results, or meet information.
 
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
