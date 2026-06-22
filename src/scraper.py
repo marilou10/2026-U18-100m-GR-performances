@@ -1,9 +1,7 @@
 # Copyright (c) 2026 Μαρία Ελένη Αντωνοπούλου
 # Licensed under the MIT License. See LICENSE file.
 #
-# 2026 U18 100m Greek performances — scraper & Excel/PDF generator.
-# Scrapes Roster Athletics links, normalizes names/clubs, produces
-# All_Performances / Season_Best / Καλύτερες_Επιδόσεις sheets.
+# 2026 U18 100m Greek performances — scraper & orchestrator.
 
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
@@ -15,36 +13,57 @@ from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.common.action_chains import ActionChains
 from webdriver_manager.chrome import ChromeDriverManager
 
-from openpyxl import Workbook
-from openpyxl.styles import PatternFill
-from datetime import datetime
-
-try:
-    from fpdf import FPDF
-    _HAS_PDF = True
-except ImportError:
-    _HAS_PDF = False
-import os
 import json
 import time
 import sys
-import subprocess
 import re
 import unicodedata
-import csv
+import os
 
-
-LINKS_FILE = os.path.join(
-    os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-    "meet_links.txt"
+from config import (
+    LINKS_FILE, CACHE_FILE, NOTES_FILE, NUM_WORKERS,
+    OVERRIDE_EXCLUDE, NON_GREEK_CLUBS, MANUAL_CLUB,
+)
+from normalizer import (
+    perf_float, norm_full, nk_latin, has_greek_chars,
+    latin_to_greek, clean_competition_location, translate_location,
+    clean_performance, is_wind_legal, fmt_wind, fmt_comp, fmt_loc,
+    uppercase_all, clear_placeholder_clubs, clear_lane_placeholders,
+    _club_key,
+)
+from exporter import (
+    create_excel, export_csv, export_pdf, open_file,
 )
 
-CACHE_FILE = os.path.join(
-    os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-    "cache_performances.json"
-)
 
-# Load URLs and auto-convert about?id= to schedule?id=
+# =========================
+# LOAD EXISTING CACHE
+# =========================
+all_results = []
+scraped_urls = set()
+
+if os.path.exists(CACHE_FILE):
+    print("Loading existing cache...")
+    try:
+        with open(CACHE_FILE, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+        if isinstance(data, dict) and "performances" in data:
+            all_results = data["performances"]
+            scraped_urls = set(data.get("scraped_urls", []))
+        elif isinstance(data, list):
+            all_results = data
+        before = len(all_results)
+        all_results = [r for r in all_results if 0 < perf_float(r["performance"]) < 25.0]
+        if len(all_results) < before:
+            print(f"  Removed {before - len(all_results)} corrupted/non-100m entry(ies)")
+        print(f"Loaded {len(all_results)} performances from cache\n")
+    except (json.JSONDecodeError, KeyError):
+        print("[WARN] Cache file is corrupted. Starting fresh...")
+        all_results = []
+
+# =========================
+# DETERMINE NEW URLS
+# =========================
 fixed_links = []
 with open(LINKS_FILE, 'r', encoding="utf-8") as f:
     raw_lines = f.readlines()
@@ -60,126 +79,24 @@ for line in raw_lines:
 
 URLS = [l.strip() for l in fixed_links if l.strip()]
 
-# Save back if any about?id= were replaced
 if any("about?id=" in l for l in raw_lines):
     with open(LINKS_FILE, 'w', encoding="utf-8") as f:
         f.writelines(fixed_links)
     print("[OK] Auto-converted about?id= to schedule?id= in meet_links.txt")
 
-all_results = []
-scraped_urls = set()
-
-
-def perf_float(p):
-    if not p:
-        return 999.0
-    clean = re.sub(r'[^\d.]', '', p.replace("(", "").split()[0])
-    # Handle empty or malformed (e.g. "..", ".") values
-    try:
-        return float(clean) if clean else 999.0
-    except ValueError:
-        return 999.0
-
-
-GREEK_TO_LATIN = {
-    ord('Α'): 'A', ord('α'): 'a',
-    ord('Β'): 'V', ord('β'): 'v',
-    ord('Γ'): 'G', ord('γ'): 'g',
-    ord('Δ'): 'D', ord('δ'): 'd',
-    ord('Ε'): 'E', ord('ε'): 'e',
-    ord('Ζ'): 'Z', ord('ζ'): 'z',
-    ord('Η'): 'I', ord('η'): 'i',
-    ord('Θ'): 'TH', ord('θ'): 'th',
-    ord('Ι'): 'I', ord('ι'): 'i',
-    ord('Κ'): 'K', ord('κ'): 'k',
-    ord('Λ'): 'L', ord('λ'): 'l',
-    ord('Μ'): 'M', ord('μ'): 'm',
-    ord('Ν'): 'N', ord('ν'): 'n',
-    ord('Ξ'): 'X', ord('ξ'): 'x',
-    ord('Ο'): 'O', ord('ο'): 'o',
-    ord('Π'): 'P', ord('π'): 'p',
-    ord('Ρ'): 'R', ord('ρ'): 'r',
-    ord('Σ'): 'S', ord('σ'): 's', ord('ς'): 's',
-    ord('Τ'): 'T', ord('τ'): 't',
-    ord('Υ'): 'Y', ord('υ'): 'y',
-    ord('Φ'): 'F', ord('φ'): 'f',
-    ord('Χ'): 'CH', ord('χ'): 'ch',
-    ord('Ψ'): 'PS', ord('ψ'): 'ps',
-    ord('Ω'): 'O', ord('ω'): 'o',
-    ord('Ά'): 'A', ord('ά'): 'a',
-    ord('Έ'): 'E', ord('έ'): 'e',
-    ord('Ή'): 'I', ord('ή'): 'i',
-    ord('Ί'): 'I', ord('ί'): 'i', ord('ΐ'): 'i',
-    ord('Ό'): 'O', ord('ό'): 'o',
-    ord('Ύ'): 'Y', ord('ύ'): 'y', ord('ΰ'): 'y',
-    ord('Ώ'): 'O', ord('ώ'): 'o',
-}
-
-def normalize_name(name):
-    """Transliterate Greek to Latin so ΓΕΩΡΓΙΑ ΣΤΑΘΟΠΟΥΛΟΥ and GEORGIA STATHOPOULOU match."""
-    return name.translate(GREEK_TO_LATIN).upper().strip()
-
-def nk_latin(name):
-    """Extract surname as Latin string for cross-script matching."""
-    n = normalize_name(name)
-    n = n.replace("OY", "OU")
-    parts = n.split()
-    return parts[-1] if parts else ""
-
-def norm_full(name):
-    """Full name normalized to Latin, for cross-script identity matching."""
-    n = normalize_name(name)
-    n = n.replace("OY", "OU").replace("GG", "NG")
-    return n
-
-
-# =========================
-# LOAD EXISTING CACHE
-# =========================
-if os.path.exists(CACHE_FILE):
-    print("Loading existing cache...")
-    try:
-        with open(CACHE_FILE, 'r', encoding='utf-8') as f:
-            data = json.load(f)
-        if isinstance(data, dict) and "performances" in data:
-            all_results = data["performances"]
-            scraped_urls = set(data.get("scraped_urls", []))
-        elif isinstance(data, list):
-            all_results = data
-        # Filter out entries with unparseable or non-100m performances
-        before = len(all_results)
-        all_results = [r for r in all_results if 0 < perf_float(r["performance"]) < 25.0]
-        if len(all_results) < before:
-            print(f"  Removed {before - len(all_results)} corrupted/non-100m entry(ies)")
-        print(f"Loaded {len(all_results)} performances from cache\n")
-    except (json.JSONDecodeError, KeyError):
-        print("[WARN] Cache file is corrupted. Starting fresh...")
-        all_results = []
-
-# =========================
-# DETERMINE NEW URLS
-# =========================
 urls_to_scrape = [url for url in URLS if url not in scraped_urls]
 print(f"Total links in file: {len(URLS)} | Already cached: {len(URLS) - len(urls_to_scrape)} | New: {len(urls_to_scrape)}")
 
 if urls_to_scrape:
     print(f"Scraping {len(urls_to_scrape)} new link(s)...\n")
 
-    # =========================
-    # CHROME OPTIONS
-    # =========================
     chrome_options = Options()
     chrome_options.add_argument("--disable-blink-features=AutomationControlled")
     chrome_options.add_argument("--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
     chrome_options.add_argument("--disable-dev-shm-features")
     chrome_options.add_argument("--no-sandbox")
 
-    # =========================
-    # SCRAPE LOOP (PARALLEL)
-    # =========================
     from concurrent.futures import ThreadPoolExecutor, as_completed
-
-    NUM_WORKERS = 3
 
     PERFORMANCE_RE = re.compile(r"\d+\.\d+")
 
@@ -192,7 +109,6 @@ if urls_to_scrape:
             m = PERFORMANCE_RE.search(text)
             if m:
                 perf = m.group(0)
-                # Re-append trailing suffix chars (w, h) from original text
                 rest = text[m.end():]
                 for suffix in ("w", "h"):
                     if suffix in rest:
@@ -216,7 +132,6 @@ if urls_to_scrape:
                 print(f"\n[W{worker_id}] ({url_index + 1}/{len(urls_batch)}) {url}")
                 try:
                     driver.get(url)
-
                     try:
                         WebDriverWait(driver, 15).until(
                             EC.presence_of_all_elements_located((By.CSS_SELECTOR, "tbody tr"))
@@ -228,9 +143,6 @@ if urls_to_scrape:
 
                     time.sleep(1)
 
-                    # =========================
-                    # SCRAPE MEET INFO
-                    # =========================
                     body_text = driver.find_element(By.TAG_NAME, "body").text
                     lines = body_text.split("\n")
 
@@ -254,15 +166,11 @@ if urls_to_scrape:
                             meet_location = re.sub(r'^\d+\s*', '', raw).strip()
 
                     meet_name = re.sub(r'^Roster Athletics\s*·\s*', '', meet_name).strip()
-
                     if not meet_name:
                         meet_name = driver.title.strip()
 
                     print(f"[W{worker_id}]   Meet: {meet_name} | Date: {meet_date} | Location: {meet_location}")
 
-                    # =========================
-                    # FIND WOMEN'S 100m FINALS
-                    # =========================
                     rows = driver.find_elements(By.CSS_SELECTOR, "tbody tr")
                     print(f"[W{worker_id}]   Found {len(rows)} rows in schedule")
 
@@ -343,15 +251,10 @@ if urls_to_scrape:
                         succeeded.append(url)
                         continue
 
-                    # =========================
-                    # SCRAPE EACH RESULTS PAGE
-                    # =========================
                     for results_url in results_urls:
                         print(f"[W{worker_id}]   Scraping results: {results_url}")
-
                         try:
                             driver.get(results_url)
-
                             try:
                                 WebDriverWait(driver, 15).until(
                                     EC.presence_of_all_elements_located((By.CSS_SELECTOR, "tbody tr"))
@@ -389,7 +292,6 @@ if urls_to_scrape:
                                     wind = line.replace("Άνεμος:", "").strip()
                                     break
 
-                            # Find the specific table belonging to the 100m event (skip other tables on the page)
                             try:
                                 tables = driver.find_elements(By.TAG_NAME, "table")
                                 table_100m = None
@@ -410,35 +312,26 @@ if urls_to_scrape:
                             for row in result_rows:
                                 try:
                                     cells = row.find_elements(By.TAG_NAME, "td")
-
                                     if len(cells) < 5:
                                         continue
-
                                     lane = cells[1].text.strip()
                                     athlete_info = cells[2].text.split("\n")
                                     name = athlete_info[0].strip()
-
                                     if len(athlete_info) < 2:
                                         continue
-
                                     try:
                                         birth_year = int(athlete_info[1].strip())
                                     except ValueError:
                                         continue
-
                                     performance, perf_idx = find_performance_cell(row)
-
                                     if not performance:
                                         continue
-
                                     if perf_float(performance) > 25.0:
                                         continue
-
                                     all_cells = row.find_elements(By.TAG_NAME, "td")
                                     club = all_cells[perf_idx - 1].text.strip() if perf_idx and perf_idx > 0 else ""
                                     if club and name and club == name.split()[-1]:
                                         club = ""
-
                                     if 2009 <= birth_year <= 2012:
                                         local_results.append({
                                             "name": name,
@@ -478,7 +371,6 @@ if urls_to_scrape:
                 pass
         return local_results, succeeded
 
-    # Distribute URLs evenly across workers
     batches = [[] for _ in range(NUM_WORKERS)]
     for i, url in enumerate(urls_to_scrape):
         batches[i % NUM_WORKERS].append(url)
@@ -501,7 +393,9 @@ if urls_to_scrape:
 
     print(f"Scraped {len(all_new_results)} new performances\n")
 
-# Remove duplicates (always, even after cache load)
+# =========================
+# DEDUP (always runs)
+# =========================
 unique = {}
 for r in all_results:
     key = (
@@ -511,7 +405,6 @@ for r in all_results:
         r["performance"]
     )
     unique[key] = r
-
 if len(all_results) != len(unique):
     print(f"  Dedup: {len(all_results)} -> {len(unique)} entries")
 all_results = list(unique.values())
@@ -520,104 +413,36 @@ all_results = list(unique.values())
 # CLEAN COMPETITION NAMES & LOCATIONS
 # =========================
 for r in all_results:
-    r["competition"] = re.sub(r'^Roster Athletics\s*·\s*', '', r["competition"]).strip()
-    r["location"] = re.sub(r'^\d+\s*', '', r["location"]).strip()
-    r["location"] = re.sub(r', ([^,]+), \1$', r', \1', r["location"])
-    m = re.search(r'& (.+?) \(.*?(?:ΔΡ[ΟΌ]ΜΟΙ|[ΑΆ]ΛΜΑΤΑ).*?\), (.+)', r["location"], re.IGNORECASE)
-    if m:
-        r["location"] = m.group(1).strip() + ", " + m.group(2).strip()
-    # Strip embedded location from competition name
-    loc_city = r["location"].split(",")[0].strip()
-    if loc_city:
-        comp = r["competition"]
-        def _no_tonos(s):
-            return ''.join(c for c in unicodedata.normalize('NFD', s) if unicodedata.category(c) != 'Mn').upper()
-        comp_flat = _no_tonos(comp)
-        city_flat = _no_tonos(loc_city)
-        idx = comp.find(",")
-        if idx >= 0 and city_flat in comp_flat[idx:idx+50]:
-            r["competition"] = comp[:idx].strip()
+    clean_competition_location(r)
+    translate_location(r)
 
-# =========================
-# TRANSLATE LATIN LOCATIONS TO GREEK
-# =========================
-LOCATION_GR = {
-    "ALEXANDRIA": "ΑΛΕΞΑΝΔΡΕΙΑ",
-    "ARGOSTOLI, KEFALONIA": "ΑΡΓΟΣΤΟΛΙ, ΚΕΦΑΛΟΝΙΑ",
-    "ATHENS": "ΑΘΗΝΑ",
-    "NAXOS KAI MIKRES KYKLADES": "ΝΑΞΟΣ ΚΑΙ ΜΙΚΡΕΣ ΚΥΚΛΑΔΕΣ",
-    "TRIKALA": "ΤΡΙΚΑΛΑ",
-    "VARI ATHINA": "ΒΑΡΗ ΑΘΗΝΑ",
-    "VARI ATHINA, GREECE": "ΒΑΡΗ ΑΘΗΝΑ",
-    "ALEXANDRIA, GREECE": "ΑΛΕΞΑΝΔΡΕΙΑ",
-    "ARGOSTOLI, KEFALONIA, GREECE": "ΑΡΓΟΣΤΟΛΙ, ΚΕΦΑΛΟΝΙΑ",
-    "ATHENS, GREECE": "ΑΘΗΝΑ",
-    "NAXOS KAI MIKRES KYKLADES, GREECE": "ΝΑΞΟΣ ΚΑΙ ΜΙΚΡΕΣ ΚΥΚΛΑΔΕΣ",
-    "TRIKALA, GREECE": "ΤΡΙΚΑΛΑ",
-}
-for r in all_results:
-    loc_up = r["location"].upper()
-    if loc_up in LOCATION_GR:
-        r["location"] = LOCATION_GR[loc_up]
-
-# Backfill missing clubs from other entries of the same athlete (cross-script)
-# Treat "Greece" placeholder club as missing
-PLACEHOLDER_CLUBS = {"GREECE", "Greece"}
-def _club_key(n):
-    """Standard + alternative V↔Y key for cross-script matching (e.g. V↔Y from Y)."""
-    k = norm_full(n)
-    return k, k.replace("V", "Y").replace("B", "Y")
-
+# Backfill clubs across entries for the same athlete
 club_lookup = {}
 for r in all_results:
     c = r.get("club", "").strip()
-    if c and c not in PLACEHOLDER_CLUBS:
+    if c and c not in {"GREECE", "Greece"}:
         k1, k2 = _club_key(r["name"])
         club_lookup.setdefault(k1, set()).add(c)
         club_lookup.setdefault(k2, set()).add(c)
 for r in all_results:
     c = r.get("club", "").strip()
-    if not c or c in PLACEHOLDER_CLUBS:
+    if not c or c in {"GREECE", "Greece"}:
         k1, k2 = _club_key(r["name"])
         for k in (k1, k2):
             if k in club_lookup:
                 r["club"] = list(club_lookup[k])[0]
                 break
-    # Clear remaining placeholders
-    if r.get("club", "").strip() in PLACEHOLDER_CLUBS:
+    if r.get("club", "").strip() in {"GREECE", "Greece"}:
         r["club"] = ""
 
-# Clean malformed performances (e.g. "13.65 (.641)" -> "13.65")
-PERF_CLEAN_RE = re.compile(r"(\d+\.\d+)")
+# Clean malformed performances
 for r in all_results:
-    p = r["performance"]
-    if "(" in p or ")" in p:
-        m = PERF_CLEAN_RE.search(p)
-        if m:
-            clean = m.group(1)
-            if "w" in p:
-                clean += "w"
-            if "h" in p:
-                clean += "h"
-            r["performance"] = clean
+    r["performance"] = clean_performance(r["performance"])
 
-# Known over-age athletes mistakenly included (Roster birth year incorrect)
-OVERRIDE_EXCLUDE = {
-    "ΚΑΛΛΙΟΠΙ ΠΑΥΛΑΚΑΚΗ",  # born 2002, not U18
-    "Kalliopi PAVLAKAKI",   # born 2002, not U18
-}
+# Override exclude
 all_results = [r for r in all_results if r["name"] not in OVERRIDE_EXCLUDE]
 
-# Non-Greek clubs (athletes from Cyprus, Bulgaria, etc.)
-NON_GREEK_CLUBS = {
-    "ΑΠΟΕΛ",
-    "ΛΥΚΕΙΟ ΒΕΡΓΙΝΑΣ - ΚΥΠΡΟΣ",
-    "KLASA",
-    "SKLA Atlet - Mezdra",
-    'ASC "Lokomotiv - Ruse"',
-    "Priority Sport",
-    "Sundsvalls FI",
-}
+# Non-Greek club filter
 before = len(all_results)
 all_results = [r for r in all_results if r.get("club", "").strip() not in NON_GREEK_CLUBS]
 if len(all_results) < before:
@@ -637,26 +462,23 @@ print("[OK] Cache saved successfully")
 # =========================
 # NORMALIZE NAMES TO GREEK
 # =========================
-# Build a mapping of (normalized_name, year) -> preferred Greek name
 preferred_names = {}
 for r in all_results:
-    has_greek = any('\u0370' <= c <= '\u03FF' for c in r['name'])
+    has_greek = has_greek_chars(r['name'])
     key = (norm_full(r["name"]), r["birth_year"])
     if has_greek and key not in preferred_names:
         preferred_names[key] = r['name']
 
-# Replace Latin names with their Greek equivalent where available
 for r in all_results:
-    has_greek = any('\u0370' <= c <= '\u03FF' for c in r['name'])
+    has_greek = has_greek_chars(r['name'])
     if not has_greek:
         key = (norm_full(r["name"]), r["birth_year"])
         if key in preferred_names:
             r['name'] = preferred_names[key]
 
-# Second pass: surname-only fallback for single-match cases (e.g. "Georgia Rafailia KANLI")
 surname_greek = {}
 for r in all_results:
-    has_greek = any('\u0370' <= c <= '\u03FF' for c in r['name'])
+    has_greek = has_greek_chars(r['name'])
     if has_greek:
         key = (nk_latin(r['name']), r['birth_year'])
         if key not in surname_greek:
@@ -664,69 +486,24 @@ for r in all_results:
         surname_greek[key].add(r['name'])
 
 for r in all_results:
-    has_greek = any('\u0370' <= c <= '\u03FF' for c in r['name'])
+    has_greek = has_greek_chars(r['name'])
     if not has_greek:
         key = (nk_latin(r['name']), r['birth_year'])
         if key in surname_greek and len(surname_greek[key]) == 1:
             r['name'] = list(surname_greek[key])[0]
 
-# Third pass: Latin->Greek reverse transliteration for still-unmatched Greek names
-LATIN_TO_GREEK_DIGRAPHS = [
-    ("CH", "Χ"), ("TH", "Θ"), ("PS", "Ψ"), ("OU", "ΟΥ"),
-    ("MP", "ΜΠ"), ("NT", "ΝΤ"), ("GK", "ΓΚ"), ("NG", "ΓΓ"),
-    ("TS", "ΤΣ"), ("TZ", "ΤΖ"), ("AI", "ΑΙ"), ("EI", "ΕΙ"),
-    ("OI", "ΟΙ"), ("AY", "ΑΥ"), ("EY", "ΕΥ"),
-    ("AV", "ΑΥ"), ("EV", "ΕΥ"),  # V as second in diphthong -> Υ not Β
-]
-LATIN_TO_GREEK_SINGLE = {
-    'A': 'Α', 'B': 'Β', 'C': 'Σ', 'D': 'Δ', 'E': 'Ε',
-    'F': 'Φ', 'G': 'Γ', 'I': 'Ι', 'K': 'Κ', 'L': 'Λ',
-    'M': 'Μ', 'N': 'Ν', 'O': 'Ο', 'P': 'Π', 'R': 'Ρ',
-    'S': 'Σ', 'T': 'Τ', 'U': 'ΟΥ', 'V': 'Β', 'X': 'Ξ',
-    'Y': 'Υ', 'Z': 'Ζ',
-}
-
-def latin_to_greek(name):
-    result = []
-    i = 0
-    upper = name.upper()
-    while i < len(upper):
-        matched = False
-        for digraph, greek in LATIN_TO_GREEK_DIGRAPHS:
-            if upper[i:i+len(digraph)] == digraph:
-                result.append(greek)
-                i += len(digraph)
-                matched = True
-                break
-        if matched:
-            continue
-        ch = upper[i]
-        result.append(LATIN_TO_GREEK_SINGLE.get(ch, ch))
-        i += 1
-    out = "".join(result)
-    # Common Greek surname ending correction: -ΚΙ -> -ΚΗ
-    parts = out.split()
-    if parts and len(parts[-1]) > 2 and parts[-1].endswith("ΚΙ"):
-        parts[-1] = parts[-1][:-1] + "Η"
-        out = " ".join(parts)
-    return out
-
 for r in all_results:
-    has_greek = any('\u0370' <= c <= '\u03FF' for c in r['name'])
+    has_greek = has_greek_chars(r['name'])
     if not has_greek:
         greek_attempt = latin_to_greek(r['name'])
-        # Only use if all characters successfully mapped (no leftover ASCII letters)
         if not any('A' <= c <= 'Z' for c in greek_attempt.upper()):
-            # Only convert if name contains at least one strong Greek digraph
-            # (avoids false conversion of non-Greek names like NIKOLOVA, DAHLGREN)
-            GREEK_STRONG_DIGRAPHS = {"CH","TH","PS","OU","MP","NT","GK","NG","TZ","AY","EY","AV","EV"}
+            from config import GREEK_STRONG_DIGRAPHS
             upper_name = r['name'].upper()
             surname = upper_name.split()[-1] if ' ' in upper_name else upper_name
             has_strong = False
             for d in GREEK_STRONG_DIGRAPHS:
                 if d not in upper_name:
                     continue
-                # Skip "EV" when it's part of "-EVA" Bulgarian patronymic suffix
                 if d == "EV" and surname.endswith("EVA") and "EV" in surname[-3:]:
                     continue
                 has_strong = True
@@ -737,18 +514,13 @@ for r in all_results:
 # =========================
 # FILTER NON-GREEK ATHLETES
 # =========================
-# Athletes whose names remain in Latin after all normalization passes are non-Greek
 before = len(all_results)
-all_results = [r for r in all_results if any('\u0370' <= c <= '\u03FF' for c in r['name'])]
+all_results = [r for r in all_results if has_greek_chars(r['name'])]
 removed = before - len(all_results)
 if removed:
     print(f"[OK] Removed {removed} entries by non-Greek athletes")
 
-# Manual club fixups for athletes where backfill failed (transliteration mismatch)
-# Match on normalized surname + first-name initial to catch spelling variants
-MANUAL_CLUB = {
-    "KANLI": "ΓΑΣ ΜΗΘΥΜΝΑΣ ΟΛΥΜΠΙΑΣ ΛΕΣ",
-}
+# Manual club fixups
 for r in all_results:
     if r.get("club", "").strip():
         continue
@@ -760,20 +532,14 @@ for r in all_results:
 # SEASON BEST
 # =========================
 season_best = {}
-
 for r in all_results:
     try:
         perf = perf_float(r["performance"])
     except ValueError:
         continue
-
     key = (norm_full(r["name"]), r["birth_year"])
-
-    if key not in season_best:
+    if key not in season_best or perf < perf_float(season_best[key]["performance"]):
         season_best[key] = r
-    else:
-        if perf < perf_float(season_best[key]["performance"]):
-            season_best[key] = r
 
 ranking = sorted(
     season_best.values(),
@@ -783,17 +549,6 @@ ranking = sorted(
 # =========================
 # WIND-LEGAL BEST
 # =========================
-def is_wind_legal(r):
-    if 'w' in r['performance']:
-        return False
-    w = r['wind'].strip().lstrip('+')
-    if w.upper() == 'NWI':
-        return True
-    try:
-        return float(w) <= 2.0
-    except ValueError:
-        return True
-
 wind_legal_best = {}
 for r in all_results:
     if not is_wind_legal(r):
@@ -812,7 +567,7 @@ wind_legal_ranking = sorted(
 )
 
 # =========================
-# WIND-AIDED ONLY (athletes with no wind-legal performances at all)
+# WIND-AIDED ONLY
 # =========================
 wind_aided_only = {}
 for r in all_results:
@@ -823,7 +578,6 @@ for r in all_results:
     except ValueError:
         continue
     key = (norm_full(r["name"]), r["birth_year"])
-    # Only include if athlete has NO wind-legal entry
     if key in wind_legal_best:
         continue
     if key not in wind_aided_only or perf < perf_float(wind_aided_only[key]["performance"]):
@@ -835,33 +589,15 @@ wind_aided_ranking = sorted(
 )
 
 # =========================
-# UPPERCASE ALL TEXT FIELDS FOR OUTPUT
+# UPPERCASE & CLEAN UP
 # =========================
-TEXT_FIELDS = ["name", "club", "competition", "location", "date", "heat", "lane"]
-for r in all_results:
-    for k in TEXT_FIELDS:
-        v = r.get(k)
-        if v and isinstance(v, str):
-            r[k] = v.upper()
-
-# Clear any remaining placeholder clubs after uppercase
-for r in all_results:
-    if r.get("club", "").strip() in PLACEHOLDER_CLUBS:
-        r["club"] = ""
-
-# Clean up placeholder lane values
-for r in all_results:
-    lane = r.get("lane", "").strip()
-    if lane in ("", "-", "--"):
-        r["lane"] = ""
+uppercase_all(all_results)
+clear_placeholder_clubs(all_results)
+clear_lane_placeholders(all_results)
 
 # =========================
 # LOAD NOTES
 # =========================
-NOTES_FILE = os.path.join(
-    os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-    "cache_notes.json"
-)
 _notes_data = {}
 if os.path.exists(NOTES_FILE):
     try:
@@ -870,223 +606,18 @@ if os.path.exists(NOTES_FILE):
     except (json.JSONDecodeError, IOError):
         _notes_data = {}
 
-def fmt_note(r):
+def fmt_note(r, nf=None, nd=None):
     k = f"{norm_full(r['name'])}|{r.get('birth_year','')}|{r.get('date','')}"
     return _notes_data.get(k, "")
 
 # =========================
-# OUTPUT FILE
+# EXPORT
 # =========================
-base_dir = os.path.dirname(os.path.abspath(__file__))
-output_dir = os.path.join(base_dir, "output")
-os.makedirs(output_dir, exist_ok=True)
+filename = create_excel(all_results, ranking, wind_legal_ranking, wind_aided_ranking, fmt_note, fmt_wind, fmt_comp, fmt_loc)
+export_csv(all_results, filename, fmt_wind, fmt_comp, fmt_loc, fmt_note)
+export_pdf(all_results, wind_legal_ranking, wind_aided_ranking, filename, lambda r, k: str(r.get(k, "")), fmt_wind, fmt_comp, fmt_loc, fmt_note)
 
-timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M")
-
-filename = os.path.join(
-    output_dir,
-    f"2026_U18_100m_GR_{timestamp}.xlsx"
-)
-
-def fmt_wind(w):
-    w = w.strip()
-    if not w:
-        return "NWI"
-    if w.upper() == "NWI":
-        return "NWI"
-    return w.lstrip("+")
-
-def fmt_comp(r):
-    return r["competition"]
-
-def fmt_loc(r):
-    loc = r["location"]
-    if loc.endswith(", GREECE"):
-        loc = loc[:-8]
-    return loc
-
-G = ["Α/Α","ΟΝΟΜΑΤΕΠΩΝΥΜΟ","ΓΕΝΝΗΣΗ","ΣΩΜΑΤΕΙΟ","ΕΠΙΔΟΣΗ","ΑΝΕΜΟΣ","ΑΓΩΝΑΣ","ΗΜ/ΝΙΑ","ΤΟΠΟΘΕΣΙΑ","ΣΕΙΡΑ","ΔΙΑΔΡΟΜΟΣ","ΣΗΜΕΙΩΣΕΙΣ"]
-
-wb = Workbook()
-
-ws1 = wb.active
-ws1.title = "All_Performances"
-ws1.append(G)
-
-sorted_all = sorted(all_results, key=lambda x: perf_float(x["performance"]))
-for i, r in enumerate(sorted_all, 1):
-    ws1.append([i, r["name"], r["birth_year"], r["club"], r["performance"], fmt_wind(r["wind"]), fmt_comp(r), r["date"], fmt_loc(r), r["heat"], r["lane"], fmt_note(r)])
-
-ws2 = wb.create_sheet("Season_Best")
-ws2.append(["100 Μ ΚΟΡΑΣΙΔΩΝ (Κ18) 2026"])
-ws2.append(G)
-for i, r in enumerate(ranking, 1):
-    ws2.append([i, r["name"], r["birth_year"], r["club"], r["performance"], fmt_wind(r["wind"]), fmt_comp(r), r["date"], fmt_loc(r), r["heat"], r["lane"], fmt_note(r)])
-
-ws3 = wb.create_sheet("Καλύτερες_Επιδόσεις")
-ws3.append(["100 Μ ΚΟΡΑΣΙΔΩΝ (Κ18) 2026"])
-ws3.append(G)
-
-for i, r in enumerate(wind_legal_ranking, 1):
-        ws3.append([i, r["name"], r["birth_year"], r["club"], r["performance"], fmt_wind(r["wind"]), fmt_comp(r), r["date"], fmt_loc(r), r["heat"], r["lane"], fmt_note(r)])
-
-if wind_aided_ranking:
-    ws3.append([])
-    ws3.append(["ΜΕ ΑΝΕΜΟ"] + [""] * 11)
-    for i, r in enumerate(wind_aided_ranking, 1):
-        ws3.append([i, r["name"], r["birth_year"], r["club"], r["performance"], fmt_wind(r["wind"]), fmt_comp(r), r["date"], fmt_loc(r), r["heat"], r["lane"], fmt_note(r)])
-
-COPYRIGHT = f"Copyright (c) {datetime.now().year} Μαρία Ελένη Αντωνοπούλου — Licensed under MIT"
-ws1.append([])
-ws1.append([COPYRIGHT] + [""] * 11)
-ws2.append([])
-ws2.append([COPYRIGHT] + [""] * 11)
-ws3.append([])
-ws3.append([COPYRIGHT] + [""] * 11)
-
-# =========================
-# EXCEL COLORING (highlight wind-aided rows) — must be before wb.save()
-# =========================
-WIND_FILL = PatternFill(start_color="FFFCE4", end_color="FFFCE4", fill_type="solid")
-for ws in [ws1, ws2, ws3]:
-    for row in ws.iter_rows(min_row=2, max_row=ws.max_row):
-        perf_cell = row[4]
-        if perf_cell.value and isinstance(perf_cell.value, str) and "w" in perf_cell.value:
-            for cell in row:
-                cell.fill = WIND_FILL
-
-wb.save(filename)
-
-# =========================
-# CSV EXPORT
-# =========================
-csv_filename = filename.replace(".xlsx", ".csv")
-with open(csv_filename, 'w', encoding='utf-8', newline='') as f:
-    w = csv.writer(f)
-    w.writerow(G)
-    for r in sorted(all_results, key=lambda x: perf_float(x["performance"])):
-        w.writerow([r["name"], r["birth_year"], r["club"], r["performance"],
-                    fmt_wind(r["wind"]), fmt_comp(r), r["date"], fmt_loc(r),
-                    r["heat"], r["lane"], fmt_note(r)])
-print(f"CSV file: {csv_filename}")
-
-# =========================
-# PDF EXPORT
-# =========================
-if _HAS_PDF:
-    pdf_filename = filename.replace(".xlsx", ".pdf")
-
-    class PDF(FPDF):
-        def footer(self):
-            self.set_y(-10)
-            self.set_font("DejaVu", "", 5)
-            self.cell(0, 5, COPYRIGHT, align="C")
-    pdf = PDF(orientation="L", unit="mm", format="A3")
-    pdf.set_left_margin(5)
-
-    # Find DejaVu font: check bundled (src/) then common system paths
-    _FONT_DIRS = [
-        os.path.dirname(os.path.abspath(__file__)),
-        "/usr/share/fonts/truetype/dejavu",
-        "/usr/local/share/fonts/dejavu",
-        os.path.expanduser("~/.fonts"),
-    ]
-    if sys.platform == "win32":
-        _FONT_DIRS.insert(0, r"C:\Windows\Fonts")
-    _TTF = None
-    _TTF_B = None
-    for d in _FONT_DIRS:
-        r = os.path.join(d, "DejaVuSans.ttf")
-        b = os.path.join(d, "DejaVuSans-Bold.ttf")
-        if os.path.exists(r) and os.path.exists(b):
-            _TTF, _TTF_B = r, b
-            break
-    if _TTF is None:
-        print("[WARN] DejaVuSans.ttf not found — PDF may not render correctly")
-    else:
-        pdf.add_font("DejaVu", "", _TTF)
-        pdf.add_font("DejaVu", "B", _TTF_B)
-
-    headers = ["Α/Α", "ΟΝΟΜΑΤΕΠΩΝΥΜΟ", "ΓΕΝ.", "ΣΩΜΑΤΕΙΟ", "ΕΠΙΔ.", "ΑΝΕΜ.", "ΑΓΩΝΑΣ", "ΗΜ/ΝΙΑ", "ΤΟΠΟΘΕΣΙΑ", "ΣΕΙΡΑ", "ΔΙΑΔ.", "ΣΗΜ."]
-    all_pdf_rows = wind_legal_ranking + wind_aided_ranking
-    total = len(all_pdf_rows)
-    total_aided = len(wind_aided_ranking)
-
-    def rget(r, k):
-        v = r.get(k)
-        return str(v) if v is not None else ""
-
-    pdf.set_font("DejaVu", "", 6)
-    col_w = []
-    col_w.append(max(pdf.get_string_width(str(i)) for i in range(1, total + 1)) + 2)
-    col_w.append(max(pdf.get_string_width(r["name"]) for r in all_pdf_rows) + 2)
-    col_w.append(max(pdf.get_string_width(str(r["birth_year"])) for r in all_pdf_rows) + 2)
-    col_w.append(max(pdf.get_string_width(r["club"]) for r in all_pdf_rows) + 2)
-    col_w.append(max(pdf.get_string_width(r["performance"]) for r in all_pdf_rows) + 2)
-    col_w.append(max(pdf.get_string_width(fmt_wind(r["wind"])) for r in all_pdf_rows) + 2)
-    col_w.append(max(pdf.get_string_width(fmt_comp(r)) for r in all_pdf_rows) + 2)
-    col_w.append(max(pdf.get_string_width(r["date"]) for r in all_pdf_rows) + 2)
-    col_w.append(max(pdf.get_string_width(fmt_loc(r)) for r in all_pdf_rows) + 2)
-    col_w.append(max(pdf.get_string_width(rget(r, "heat")) for r in all_pdf_rows) + 2)
-    col_w.append(max(pdf.get_string_width(rget(r, "lane")) for r in all_pdf_rows) + 2)
-    col_w.append(max(pdf.get_string_width(fmt_note(r)) for r in all_pdf_rows) + 2)
-    col_w[11] = max(col_w[11], 8)  # minimum 8mm
-
-    pdf.set_font("DejaVu", "B", 7)
-    for ci, h in enumerate(headers):
-        hw = pdf.get_string_width(h) + 2
-        if hw > col_w[ci]:
-            col_w[ci] = hw
-
-    def pdf_header():
-        pdf.set_font("DejaVu", "B", 9)
-        pdf.cell(0, 5, "100 Μ ΚΟΡΑΣΙΔΩΝ (Κ18) 2026", new_x="LMARGIN", new_y="NEXT")
-        pdf.set_font("DejaVu", "B", 7)
-        for ci, h in enumerate(headers):
-            pdf.cell(col_w[ci], 5, h, border=1, align="C")
-        pdf.ln()
-
-    def pdf_row(i, r, bold=False):
-        style = "B" if bold else ""
-        pdf.set_font("DejaVu", style, 6)
-        vals = [
-            str(i), r["name"], str(r["birth_year"]), r["club"],
-            r["performance"], fmt_wind(r["wind"]), fmt_comp(r), r["date"],
-            fmt_loc(r), rget(r, "heat"), rget(r, "lane"), fmt_note(r)
-        ]
-        for ci, v in enumerate(vals):
-            pdf.cell(col_w[ci], 4, v, border=1, align="C" if ci == 0 else "L")
-        pdf.ln()
-
-    pdf.set_auto_page_break(auto=True, margin=10)
-    pdf.add_page()
-    pdf_header()
-
-    for i, r in enumerate(wind_legal_ranking, 1):
-        if pdf.y > 270:
-            pdf.add_page()
-            pdf_header()
-        pdf_row(i, r)
-
-    if wind_aided_ranking:
-        if pdf.y > 260:
-            pdf.add_page()
-            pdf_header()
-        pdf.set_font("DejaVu", "B", 7)
-        pdf.cell(sum(col_w), 5, "ΜΕ ΑΝΕΜΟ", border=1, align="C")
-        pdf.ln()
-        for i, r in enumerate(wind_aided_ranking, 1):
-            if pdf.y > 270:
-                pdf.add_page()
-                pdf_header()
-            pdf_row(i, r)
-
-    pdf.output(pdf_filename)
-    print(f"PDF file: {pdf_filename}")
-print("\n" + "="*50)
-print("DONE")
-print("="*50)
-print(f"Excel file: {filename}")
+print(f"\nExcel file: {filename}")
 print(f"Total performances: {len(all_results)}")
 print(f"Season best athletes: {len(ranking)}")
 print(f"Wind-legal best athletes: {len(wind_legal_ranking)}")
@@ -1106,14 +637,7 @@ print(f"\nTop clubs: {', '.join(f'{c} ({n})' for c, n in top_clubs)}")
 age_dist = sorted(ages.items())
 print(f"Age dist: {', '.join(f'{y}: {n}' for y, n in age_dist)}")
 
-def _open(fpath):
-    if sys.platform == "win32":
-        os.startfile(fpath)
-    elif sys.platform == "darwin":
-        subprocess.run(["open", fpath])
-    else:
-        subprocess.run(["xdg-open", fpath])
-
-_open(filename)
-if _HAS_PDF:
-    _open(pdf_filename)
+open_file(filename)
+pdf_file = filename.replace(".xlsx", ".pdf")
+if os.path.exists(pdf_file):
+    open_file(pdf_file)

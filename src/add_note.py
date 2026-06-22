@@ -13,48 +13,14 @@ Usage:
   python src/add_note.py search <term>      Search entries in the cache
   python src/add_note.py add <key> <note>   Add a note by exact key
   python src/add_note.py remove <key>       Remove a note by exact key
+  python src/add_note.py filter [opts]      Filter entries (--club, --name, --min-perf, etc.)
 """
 
 import json, os, sys, re
+from config import GREEK_TO_LATIN, BASE
 
-BASE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CACHE_FILE = os.path.join(BASE, "cache_performances.json")
 NOTES_FILE = os.path.join(BASE, "cache_notes.json")
-
-# Reuse normalization functions from scraper
-GREEK_TO_LATIN = {
-    ord('Α'): 'A', ord('α'): 'a',
-    ord('Β'): 'V', ord('β'): 'v',
-    ord('Γ'): 'G', ord('γ'): 'g',
-    ord('Δ'): 'D', ord('δ'): 'd',
-    ord('Ε'): 'E', ord('ε'): 'e',
-    ord('Ζ'): 'Z', ord('ζ'): 'z',
-    ord('Η'): 'I', ord('η'): 'i',
-    ord('Θ'): 'TH', ord('θ'): 'th',
-    ord('Ι'): 'I', ord('ι'): 'i',
-    ord('Κ'): 'K', ord('κ'): 'k',
-    ord('Λ'): 'L', ord('λ'): 'l',
-    ord('Μ'): 'M', ord('μ'): 'm',
-    ord('Ν'): 'N', ord('ν'): 'n',
-    ord('Ξ'): 'X', ord('ξ'): 'x',
-    ord('Ο'): 'O', ord('ο'): 'o',
-    ord('Π'): 'P', ord('π'): 'p',
-    ord('Ρ'): 'R', ord('ρ'): 'r',
-    ord('Σ'): 'S', ord('σ'): 's', ord('ς'): 's',
-    ord('Τ'): 'T', ord('τ'): 't',
-    ord('Υ'): 'Y', ord('υ'): 'y',
-    ord('Φ'): 'F', ord('φ'): 'f',
-    ord('Χ'): 'CH', ord('χ'): 'ch',
-    ord('Ψ'): 'PS', ord('ψ'): 'ps',
-    ord('Ω'): 'O', ord('ω'): 'o',
-    ord('Ά'): 'A', ord('ά'): 'a',
-    ord('Έ'): 'E', ord('έ'): 'e',
-    ord('Ή'): 'I', ord('ή'): 'i',
-    ord('Ί'): 'I', ord('ί'): 'i', ord('ΐ'): 'i',
-    ord('Ό'): 'O', ord('ό'): 'o',
-    ord('Ύ'): 'Y', ord('ύ'): 'y', ord('ΰ'): 'y',
-    ord('Ώ'): 'O', ord('ώ'): 'o',
-}
 
 def normalize_name(name):
     return name.translate(GREEK_TO_LATIN).upper().strip()
