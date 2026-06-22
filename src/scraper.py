@@ -760,8 +760,10 @@ filename = os.path.join(
 
 def fmt_wind(w):
     w = w.strip()
+    if not w:
+        return "NWI"
     if w.upper() == "NWI":
-        return ""
+        return "NWI"
     return w.lstrip("+")
 
 def fmt_comp(r):
@@ -813,7 +815,7 @@ if _HAS_PDF:
     pdf.add_font("DejaVu", "", r"C:\Windows\Fonts\DejaVuSans.ttf")
     pdf.add_font("DejaVu", "B", r"C:\Windows\Fonts\DejaVuSans-Bold.ttf")
 
-    col_w = [8, 48, 10, 32, 12, 15, 85, 15, 45, 20, 20, 20]
+    col_w = [8, 48, 13, 32, 12, 15, 85, 15, 45, 20, 20, 20]
     headers = ["Α/Α", "ΟΝΟΜΑΤΕΠΩΝΥΜΟ", "ΓΕΝ.", "ΣΩΜΑΤΕΙΟ", "ΕΠΙΔ.", "ΑΝΕΜ.", "ΑΓΩΝΑΣ", "ΗΜ/ΝΙΑ", "ΤΟΠΟΘΕΣΙΑ", "ΣΕΙΡΑ", "ΔΙΑΔ.", "ΣΗΜ."]
 
     def pdf_header():
@@ -828,7 +830,7 @@ if _HAS_PDF:
         style = "B" if bold else ""
         pdf.set_font("DejaVu", style, 6)
         vals = [
-            str(i), r["name"], str(r["birth_year"])[-2:], r["club"].upper(),
+            str(i), r["name"], str(r["birth_year"]), r["club"].upper(),
             r["performance"], fmt_wind(r["wind"]), fmt_comp(r), r["date"],
             r["location"].upper(), r["heat"], r["lane"], ""
         ]
