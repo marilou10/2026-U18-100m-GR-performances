@@ -54,4 +54,4 @@ Notes appear in the **ΣΗΜΕΙΩΣΕΙΣ** column of all three export formats.
 | `src/add_note.py` | Notes CLI & interactive manager |
 
 ## License
-MIT &mdash; Copyright (c) 2026 Μαρία Ελένη Αντωνοπούλου
+MIT — Copyright (c) 2026 Μαρία Ελένη Αντωνοπούλου
