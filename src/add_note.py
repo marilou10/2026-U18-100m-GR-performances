@@ -98,15 +98,13 @@ def format_entry(i, e, notes):
 
 def interactive_search(entries, notes):
     term = input("Match name/date/club (Enter=show all): ").strip().lower()
-    matches = []
-    for i, e in enumerate(entries):
-        if not term:
-            matches.append((i, e))
-        elif term in e.get("name", "").lower() or \
-             term in e.get("date", "").lower() or \
-             term in e.get("club", "").lower() or \
-             term in e.get("competition", "").lower():
-            matches.append((i, e))
+    matches = [(i, e) for i, e in enumerate(entries)
+               if not term or
+                  term in e.get("name", "").lower() or
+                  term in e.get("date", "").lower() or
+                  term in e.get("club", "").lower() or
+                  term in e.get("competition", "").lower()]
+    matches.sort(key=lambda x: perf_float(x[1].get("performance", "99")))
     return matches
 
 def interactive_pick(entries, notes):
@@ -191,6 +189,12 @@ def cmd_list():
             name_parts = k.split("|")
             print(f"  (orphan) {k:60s}  [{note}]")
 
+def perf_float(p):
+    try:
+        return float(p.replace("w", "").replace("h", ""))
+    except (ValueError, AttributeError):
+        return 999.0
+
 def cmd_search(term):
     entries = load_entries()
     notes = load_notes()
@@ -199,7 +203,8 @@ def cmd_search(term):
                if term_lower in e.get("name", "").lower() or
                   term_lower in e.get("date", "").lower() or
                   term_lower in e.get("club", "").lower()]
-    print(f"Found {len(matches)} matching entries:\n")
+    matches.sort(key=lambda x: perf_float(x[1].get("performance", "99")))
+    print(f"Found {len(matches)} matching entries (sorted by time):\n")
     for i, e in matches[:30]:
         print(format_entry(i, e, notes))
     if len(matches) > 30:
