@@ -509,6 +509,9 @@ for r in all_results:
     r["competition"] = re.sub(r'^Roster Athletics\s*·\s*', '', r["competition"]).strip()
     r["location"] = re.sub(r'^\d+\s*', '', r["location"]).strip()
     r["location"] = re.sub(r', ([^,]+), \1$', r', \1', r["location"])
+    m = re.search(r'& (.+?) \(.*?(?:ΔΡ[ΟΌ]ΜΟΙ|[ΑΆ]ΛΜΑΤ[Α]|[ΑΆ]ΛΜΑΤΟΣ).*?\), (.+)', r["location"])
+    if m:
+        r["location"] = m.group(1).strip() + ", " + m.group(2).strip()
 
 # Backfill missing clubs from other entries of the same athlete (cross-script)
 club_lookup = {}
