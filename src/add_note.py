@@ -97,7 +97,7 @@ def format_entry(i, e, notes):
     return f"{i:4d}. {n:40s} {p:8s} {d:12s} {c:25s}{note_str}"
 
 def interactive_search(entries, notes):
-    term = input("Search (name/date/club, Enter=show all): ").strip().lower()
+    term = input("Match name/date/club (Enter=show all): ").strip().lower()
     matches = []
     for i, e in enumerate(entries):
         if not term:
@@ -223,6 +223,8 @@ def cmd_remove(key):
 def main():
     if len(sys.argv) == 1:
         interactive_main()
+    elif sys.argv[1] in ("-h", "--help"):
+        print(__doc__)
     elif sys.argv[1] == "list":
         cmd_list()
     elif sys.argv[1] == "search" and len(sys.argv) > 2:
@@ -234,7 +236,19 @@ def main():
     else:
         print(__doc__)
 
+HELP_TEXT = """
+  search <term>   - search entries by name/date/club
+  list            - show all saved notes
+  add <key> <txt> - add note (get key from search)
+  remove <key>    - remove note
+
+  Or just run with no arguments for the interactive menu.
+"""
+
 def interactive_main():
+    print("=== Notes Manager ===")
+    print("Add/remove notes that appear in the ΣΗΜΕΙΩΣΕΙΣ column of Excel & PDF.")
+    print(HELP_TEXT)
     while True:
         print("\n=== Notes Manager ===")
         print("  1. Browse & add notes")
