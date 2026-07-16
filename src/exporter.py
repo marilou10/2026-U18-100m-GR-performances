@@ -6,6 +6,7 @@ from datetime import datetime
 from openpyxl import Workbook
 from openpyxl.styles import PatternFill
 from config import G
+from normalizer import fmt_wind, fmt_comp, fmt_loc
 try:
     from fpdf import FPDF
     _HAS_PDF = True
@@ -125,7 +126,7 @@ def export_pdf(all_results, wind_legal_ranking, wind_aided_ranking, filename, rg
         pdf.add_font("DejaVu", "", _TTF)
         pdf.add_font("DejaVu", "B", _TTF_B)
 
-    headers = ["Α/Α", "ΟΝΟΜΑΤΕΠΩΝΥΜΟ", "ΓΕΝ.", "ΣΩΜΑΤΕΙΟ", "ΕΠΙΔ.", "ΑΝΕΜ.", "ΑΓΩΝΑΣ", "ΗΜ/ΝΙΑ", "ΤΟΠΟΘΕΣΙΑ", "ΣΕΙΡΑ", "ΔΙΑΔ.", "ΣΗΜ."]
+    headers = ["Α/Α", "ΟΝΟΜΑΤΕΠΩΝΥΜΟ", "ΓΕΝ.", "ΣΩΜΑΤΕΙΟ", "ΕΠΙΔ.", "ΑΝΕΜ.", "ΑΓΩΝΑΣ", "ΗΜ/ΝΙΑ", "ΤΟΠΟΘΕΣΙΑ", "ΣΕΙΡΑ", "ΔΙΑΔ.", "Σημειώσεις"]
     all_pdf_rows = wind_legal_ranking + wind_aided_ranking
     total = len(all_pdf_rows)
 
