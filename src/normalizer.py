@@ -88,7 +88,17 @@ def fmt_wind(w):
     w = w.strip()
     if not w or w.upper() == "NWI":
         return "NWI"
-    return w.lstrip("+")
+    # Remove any leading + first to parse the number
+    w_clean = w.lstrip("+")
+    try:
+        wind_val = float(w_clean)
+        # Add + sign for positive wind values
+        if wind_val > 0:
+            return f"+{w_clean}"
+        else:
+            return w_clean
+    except ValueError:
+        return w_clean
 
 
 def fmt_comp(r):
