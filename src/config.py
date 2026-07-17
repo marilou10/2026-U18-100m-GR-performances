@@ -2,8 +2,16 @@ import os
 
 BASE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-LINKS_FILE = os.path.join(BASE, "meet_links.txt")
-CACHE_FILE = os.path.join(BASE, "cache_performances.json")
+# Separate files for each event distance
+LINKS_FILE_100M = os.path.join(BASE, "meet_links_100m.txt")
+LINKS_FILE_200M = os.path.join(BASE, "meet_links_200m.txt")
+CACHE_FILE_100M = os.path.join(BASE, "cache_performances_100m.json")
+CACHE_FILE_200M = os.path.join(BASE, "cache_performances_200m.json")
+
+# Legacy aliases (for backwards compatibility)
+LINKS_FILE = LINKS_FILE_100M
+CACHE_FILE = CACHE_FILE_100M
+
 NOTES_FILE = os.path.join(BASE, "cache_notes.json")
 
 GREEK_TO_LATIN = {
@@ -94,7 +102,7 @@ LATIN_TO_GREEK_SINGLE = {
 
 GREEK_STRONG_DIGRAPHS = {"CH","TH","PS","OU","MP","NT","GK","NG","TZ","AY","EY","AV","EV"}
 
-G = ["Α/Α","ΟΝΟΜΑΤΕΠΩΝΥΜΟ","ΓΕΝΝΗΣΗ","ΣΩΜΑΤΕΙΟ","ΕΠΙΔΟΣΗ","ΑΝΕΜΟΣ","ΑΓΩΝΑΣ","ΗΜ/ΝΙΑ","ΤΟΠΟΘΕΣΙΑ","ΣΕΙΡΑ","ΔΙΑΔΡΟΜΟΣ","ΣΗΜΕΙΩΣΕΙΣ"]
+G = ["Α/Α","ΟΝΟΜΑΤΕΠΩΝΥΜΟ","ΓΕΝΝΗΣΗ","ΣΩΜΑΤΕΙΟ","ΕΠΙΔΟΣΗ","ΑΝΕΜΟΣ","ΑΓΩΝΑΣ","ΗΜ/ΝΙΑ","ΤΟΠΟΘΕΣΙΑ","ΣΕΙΡΑ","ΔΙΑΔΡΟΜΟΣ"]
 
 TEXT_FIELDS = ["name", "club", "competition", "location", "date", "heat", "lane"]
 
