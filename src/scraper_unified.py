@@ -5,6 +5,7 @@
 # Data sourced from Roster Athletics (https://www.rosterathletics.com).
 
 import sys
+import os
 
 def select_event():
     """
@@ -34,9 +35,13 @@ def select_event():
 if __name__ == "__main__":
     event = select_event()
     
+    # Change to src directory to ensure imports work
+    src_dir = os.path.dirname(os.path.abspath(__file__))
+    os.chdir(src_dir)
+    
     if event == '100m':
-        print("\nRunning 100m scraper...")
-        import scraper
+        print("\nRunning 100m scraper...\n")
+        exec(open('scraper.py').read())
     elif event == '200m':
-        print("\nRunning 200m scraper...")
-        import scraper_200m
+        print("\nRunning 200m scraper...\n")
+        exec(open('scraper_200m.py').read())
