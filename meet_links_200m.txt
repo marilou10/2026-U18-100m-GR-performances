@@ -1,0 +1,3 @@
+# Add 200m meet links here
+# Format: one URL per line
+# Example: https://www.rosterathletics.com/schedule?id=XXXXX
